@@ -8,7 +8,7 @@
 		<version>3.5.5</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.tsbsaas</groupId>
+	<groupId>com.systemsimulator</groupId>
 	<artifactId>simulator</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>simulator</name>
