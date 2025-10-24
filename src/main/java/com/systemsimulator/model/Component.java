@@ -1,8 +1,13 @@
 package com.systemsimulator.model;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Setter
+@Getter
 public abstract class Component {
     private String id;
     private String name;
@@ -18,18 +23,4 @@ public abstract class Component {
         this.type = type;
     }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public ComponentType getType() { return type; }
-    public void setType(ComponentType type) { this.type = type; }
-
-    public HeuristicProfile getHeuristics() { return heuristics; }
-    public void setHeuristics(HeuristicProfile heuristics) { this.heuristics = heuristics; }
-
-    public Map<String, Object> getProperties() { return properties; }
-    public void setProperties(Map<String, Object> properties) { this.properties = properties; }
 }

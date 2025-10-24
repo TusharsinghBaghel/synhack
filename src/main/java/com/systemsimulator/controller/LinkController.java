@@ -290,8 +290,8 @@ public class LinkController {
     }
 
     public static class ErrorResponse {
-        private String error;
-        private long timestamp;
+        private final String error;
+        private final long timestamp;
 
         public ErrorResponse(String error) {
             this.error = error;
