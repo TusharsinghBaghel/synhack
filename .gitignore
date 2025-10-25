@@ -31,3 +31,41 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Frontend (React) ###
+# Dependencies
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+
+# Testing
+frontend/coverage/
+
+# Production build
+frontend/build/
+
+# Misc
+frontend/.DS_Store
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Optional npm cache directory
+frontend/.npm
+
+# Optional eslint cache
+frontend/.eslintcache
+
+# Package manager lock files (optional - uncomment if you want to ignore them)
+# frontend/package-lock.json
+# frontend/yarn.lock
+
+# IDE
+frontend/.idea/
+frontend/.vscode/
