@@ -3,6 +3,9 @@ package com.systemsimulator.controller;
 import com.systemsimulator.model.*;
 import com.systemsimulator.service.LinkService;
 import com.systemsimulator.service.RuleEngineService;
+import com.systemsimulator.service.HeuristicService;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +29,9 @@ public class LinkController {
 
     @Autowired
     private ComponentService componentService;
+
+    @Autowired
+    private HeuristicService heuristicService;
 
     /**
      * Get all links
@@ -197,108 +203,176 @@ public class LinkController {
         return ResponseEntity.ok(new DeleteResponse(deletedCount, "Links deleted successfully"));
     }
 
+    /**
+     * Get heuristics for a specific link
+     */
+    @GetMapping("/{id}/heuristics")
+    public ResponseEntity<?> getLinkHeuristics(@PathVariable String id) {
+        Optional<Link> linkOpt = linkService.getLinkById(id);
+        if (linkOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("Link not found: " + id));
+        }
+        return ResponseEntity.ok(linkOpt.get().getHeuristics());
+    }
+
+    /**
+     * Get default heuristics for a link type
+     */
+    @GetMapping("/heuristics/default/{linkType}")
+    public ResponseEntity<HeuristicProfile> getDefaultHeuristicsForLinkType(@PathVariable LinkType linkType) {
+        HeuristicProfile heuristics = heuristicService.getDefaultHeuristicsForLinkType(linkType);
+        return ResponseEntity.ok(heuristics);
+    }
+
+    /**
+     * Update heuristics for a specific link
+     */
+    @PutMapping("/{id}/heuristics")
+    public ResponseEntity<?> updateLinkHeuristics(
+            @PathVariable String id,
+            @RequestBody HeuristicUpdateRequest request) {
+        try {
+            Optional<Link> linkOpt = linkService.getLinkById(id);
+            if (linkOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("Link not found: " + id));
+            }
+
+            Link link = linkOpt.get();
+            heuristicService.updateLinkHeuristicScore(link, request.getParameter(), request.getScore());
+            linkService.saveLink(link);
+
+            return ResponseEntity.ok(link.getHeuristics());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * Calculate weighted score for a link
+     */
+    @PostMapping("/{id}/heuristics/score")
+    public ResponseEntity<?> calculateLinkScore(
+            @PathVariable String id,
+            @RequestBody java.util.Map<Parameter, Double> weights) {
+        try {
+            Optional<Link> linkOpt = linkService.getLinkById(id);
+            if (linkOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("Link not found: " + id));
+            }
+
+            double score = heuristicService.calculateLinkScore(linkOpt.get(), weights);
+            return ResponseEntity.ok(new ScoreResponse(score));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
     // ==================== DTOs ====================
 
+    @Setter
+    @Getter
     public static class LinkRequest {
         private String sourceId;
         private String targetId;
         private LinkType linkType;
 
-        public String getSourceId() { return sourceId; }
-        public void setSourceId(String sourceId) { this.sourceId = sourceId; }
-
-        public String getTargetId() { return targetId; }
-        public void setTargetId(String targetId) { this.targetId = targetId; }
-
-        public LinkType getLinkType() { return linkType; }
-        public void setLinkType(LinkType linkType) { this.linkType = linkType; }
     }
 
+    @Setter
+    @Getter
     public static class LinkValidationRequest {
         private String sourceId;
         private String targetId;
         private LinkType linkType;
 
-        public String getSourceId() { return sourceId; }
-        public void setSourceId(String sourceId) { this.sourceId = sourceId; }
-
-        public String getTargetId() { return targetId; }
-        public void setTargetId(String targetId) { this.targetId = targetId; }
-
-        public LinkType getLinkType() { return linkType; }
-        public void setLinkType(LinkType linkType) { this.linkType = linkType; }
     }
 
+    @Setter
+    @Getter
     public static class SuggestionRequest {
         private String sourceId;
         private String targetId;
 
-        public String getSourceId() { return sourceId; }
-        public void setSourceId(String sourceId) { this.sourceId = sourceId; }
-
-        public String getTargetId() { return targetId; }
-        public void setTargetId(String targetId) { this.targetId = targetId; }
     }
 
+    @Getter
     public static class ValidationResponse {
-        private boolean valid;
-        private String message;
+        private final boolean valid;
+        private final String message;
 
         public ValidationResponse(boolean valid, String message) {
             this.valid = valid;
             this.message = message;
         }
 
-        public boolean isValid() { return valid; }
-        public String getMessage() { return message; }
     }
 
+    @Getter
     public static class ConnectedResponse {
-        private String componentId;
-        private boolean connected;
+        private final String componentId;
+        private final boolean connected;
 
         public ConnectedResponse(String componentId, boolean connected) {
             this.componentId = componentId;
             this.connected = connected;
         }
-
-        public String getComponentId() { return componentId; }
-        public boolean isConnected() { return connected; }
     }
 
+    @Getter
     public static class CountResponse {
-        private int count;
+        private final int count;
 
         public CountResponse(int count) {
             this.count = count;
         }
 
-        public int getCount() { return count; }
     }
 
+    @Getter
     public static class DeleteResponse {
-        private int deletedCount;
-        private String message;
+        private final int deletedCount;
+        private final String message;
 
         public DeleteResponse(int deletedCount, String message) {
             this.deletedCount = deletedCount;
             this.message = message;
         }
 
-        public int getDeletedCount() { return deletedCount; }
-        public String getMessage() { return message; }
     }
 
+    @Getter
     public static class ErrorResponse {
-        private String error;
-        private long timestamp;
+        private final String error;
+        private final long timestamp;
 
         public ErrorResponse(String error) {
             this.error = error;
             this.timestamp = System.currentTimeMillis();
         }
 
-        public String getError() { return error; }
-        public long getTimestamp() { return timestamp; }
+    }
+
+    @Setter
+    @Getter
+    public static class HeuristicUpdateRequest {
+        private Parameter parameter;
+        private double score;
+
+    }
+
+    @Getter
+    public static class ScoreResponse {
+        private final double score;
+
+        public ScoreResponse(double score) {
+            this.score = score;
+        }
+
     }
 }
+

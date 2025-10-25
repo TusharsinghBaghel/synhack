@@ -1,160 +1,126 @@
 package com.systemsimulator.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.systemsimulator.model.*;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
 public class HeuristicService {
 
+    private Map<String, Map<String, Map<String, Double>>> heuristicsConfig;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @PostConstruct
+    public void init() {
+        loadHeuristicsFromJson();
+    }
+
     /**
-     * Get default heuristic scores for each component type
-     * Scores are on a scale of 0-10 (higher is better)
+     * Load heuristics configuration from JSON file
+     */
+    private void loadHeuristicsFromJson() {
+        try {
+            ClassPathResource resource = new ClassPathResource("heuristics-config.json");
+            // Use TypeReference for simpler type mapping
+            heuristicsConfig = objectMapper.readValue(
+                resource.getInputStream(),
+                new TypeReference<Map<String, Map<String, Map<String, Double>>>>() {}
+            );
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load heuristics configuration", e);
+        }
+    }
+
+    /**
+     * Get default heuristic scores for a component type
      */
     public HeuristicProfile getDefaultHeuristicsForType(ComponentType type) {
+        return getHeuristicsForTypeAndSubtype(type, "default");
+    }
+
+    /**
+     * Get heuristic scores for a specific component type and subtype
+     */
+    public HeuristicProfile getHeuristicsForTypeAndSubtype(ComponentType type, String subtype) {
         Map<Parameter, Double> scores = new HashMap<>();
 
-        switch (type) {
-            case DATABASE:
-                scores.put(Parameter.LATENCY, 6.0);           // Moderate latency (disk I/O)
-                scores.put(Parameter.COST, 7.0);              // Higher cost (persistent storage)
-                scores.put(Parameter.SCALABILITY, 7.0);       // Good horizontal scaling
-                scores.put(Parameter.CONSISTENCY, 9.0);       // Strong ACID guarantees
-                scores.put(Parameter.AVAILABILITY, 8.0);      // High availability with replicas
-                scores.put(Parameter.DURABILITY, 9.5);        // Excellent durability
-                scores.put(Parameter.MAINTAINABILITY, 6.0);   // Requires schema management
-                scores.put(Parameter.ENERGY_EFFICIENCY, 6.0); // Moderate energy use
-                scores.put(Parameter.THROUGHPUT, 7.0);        // Good throughput
-                scores.put(Parameter.SECURITY, 8.0);          // Strong security features
-                break;
+        String typeKey = type.name();
+        Map<String, Map<String, Double>> typeConfig = heuristicsConfig.get(typeKey);
 
-            case CACHE:
-                scores.put(Parameter.LATENCY, 9.5);           // Extremely low latency (RAM)
-                scores.put(Parameter.COST, 5.0);              // Lower cost (ephemeral)
-                scores.put(Parameter.SCALABILITY, 8.0);       // Excellent horizontal scaling
-                scores.put(Parameter.CONSISTENCY, 6.0);       // Eventual consistency
-                scores.put(Parameter.AVAILABILITY, 7.0);      // Good availability
-                scores.put(Parameter.DURABILITY, 3.0);        // Low durability (volatile)
-                scores.put(Parameter.MAINTAINABILITY, 8.0);   // Easy to manage
-                scores.put(Parameter.ENERGY_EFFICIENCY, 7.0); // Good energy efficiency
-                scores.put(Parameter.THROUGHPUT, 9.5);        // Excellent throughput
-                scores.put(Parameter.SECURITY, 6.0);          // Basic security
-                break;
+        if (typeConfig == null) {
+            // Return default neutral scores if type not found
+            for (Parameter param : Parameter.values()) {
+                scores.put(param, 5.0);
+            }
+            return new HeuristicProfile(scores);
+        }
 
-            case API_SERVICE:
-                scores.put(Parameter.LATENCY, 7.0);           // Low latency
-                scores.put(Parameter.COST, 6.0);              // Moderate cost
-                scores.put(Parameter.SCALABILITY, 8.5);       // Excellent horizontal scaling
-                scores.put(Parameter.CONSISTENCY, 7.0);       // Application-level consistency
-                scores.put(Parameter.AVAILABILITY, 8.0);      // High availability
-                scores.put(Parameter.DURABILITY, 5.0);        // Stateless (low durability need)
-                scores.put(Parameter.MAINTAINABILITY, 8.0);   // Good maintainability
-                scores.put(Parameter.ENERGY_EFFICIENCY, 7.0); // Good efficiency
-                scores.put(Parameter.THROUGHPUT, 8.0);        // High throughput
-                scores.put(Parameter.SECURITY, 7.5);          // Good security features
-                break;
+        // Try to get specific subtype, fall back to "default"
+        Map<String, Double> subtypeConfig = typeConfig.get(subtype);
+        if (subtypeConfig == null) {
+            subtypeConfig = typeConfig.get("default");
+        }
 
-            case QUEUE:
-                scores.put(Parameter.LATENCY, 7.5);           // Low latency
-                scores.put(Parameter.COST, 6.0);              // Moderate cost
-                scores.put(Parameter.SCALABILITY, 9.0);       // Excellent scalability
-                scores.put(Parameter.CONSISTENCY, 8.0);       // Strong ordering guarantees
-                scores.put(Parameter.AVAILABILITY, 8.5);      // High availability
-                scores.put(Parameter.DURABILITY, 8.0);        // Good durability
-                scores.put(Parameter.MAINTAINABILITY, 7.5);   // Good maintainability
-                scores.put(Parameter.ENERGY_EFFICIENCY, 7.0); // Good efficiency
-                scores.put(Parameter.THROUGHPUT, 8.5);        // High throughput
-                scores.put(Parameter.SECURITY, 7.0);          // Good security
-                break;
+        if (subtypeConfig == null) {
+            // Return neutral scores if no config found
+            for (Parameter param : Parameter.values()) {
+                scores.put(param, 5.0);
+            }
+            return new HeuristicProfile(scores);
+        }
 
-            case STORAGE:
-                scores.put(Parameter.LATENCY, 5.0);           // Higher latency (disk/network)
-                scores.put(Parameter.COST, 8.0);              // Cost-effective for large data
-                scores.put(Parameter.SCALABILITY, 9.5);       // Unlimited scaling
-                scores.put(Parameter.CONSISTENCY, 7.0);       // Eventual consistency
-                scores.put(Parameter.AVAILABILITY, 8.5);      // High availability
-                scores.put(Parameter.DURABILITY, 10.0);       // Maximum durability
-                scores.put(Parameter.MAINTAINABILITY, 7.0);   // Good maintainability
-                scores.put(Parameter.ENERGY_EFFICIENCY, 7.5); // Good efficiency
-                scores.put(Parameter.THROUGHPUT, 6.0);        // Moderate throughput
-                scores.put(Parameter.SECURITY, 8.5);          // Strong security
-                break;
-
-            case LOAD_BALANCER:
-                scores.put(Parameter.LATENCY, 8.5);           // Very low latency
-                scores.put(Parameter.COST, 5.0);              // Low cost
-                scores.put(Parameter.SCALABILITY, 9.0);       // Excellent scalability
-                scores.put(Parameter.CONSISTENCY, 7.0);       // Session consistency
-                scores.put(Parameter.AVAILABILITY, 9.5);      // Critical for availability
-                scores.put(Parameter.DURABILITY, 5.0);        // Stateless
-                scores.put(Parameter.MAINTAINABILITY, 8.5);   // Easy to configure
-                scores.put(Parameter.ENERGY_EFFICIENCY, 8.0); // Efficient
-                scores.put(Parameter.THROUGHPUT, 9.0);        // High throughput
-                scores.put(Parameter.SECURITY, 7.5);          // SSL termination, DDoS protection
-                break;
-
-            case STREAM_PROCESSOR:
-                scores.put(Parameter.LATENCY, 8.0);           // Low latency processing
-                scores.put(Parameter.COST, 7.0);              // Higher cost (compute intensive)
-                scores.put(Parameter.SCALABILITY, 8.5);       // Good horizontal scaling
-                scores.put(Parameter.CONSISTENCY, 7.5);       // Eventual consistency
-                scores.put(Parameter.AVAILABILITY, 8.0);      // High availability
-                scores.put(Parameter.DURABILITY, 6.0);        // Moderate durability
-                scores.put(Parameter.MAINTAINABILITY, 6.5);   // Complex to maintain
-                scores.put(Parameter.ENERGY_EFFICIENCY, 6.0); // Compute intensive
-                scores.put(Parameter.THROUGHPUT, 9.0);        // Very high throughput
-                scores.put(Parameter.SECURITY, 7.0);          // Good security
-                break;
-
-            case BATCH_PROCESSOR:
-                scores.put(Parameter.LATENCY, 3.0);           // High latency (batch jobs)
-                scores.put(Parameter.COST, 8.0);              // Cost-effective for bulk
-                scores.put(Parameter.SCALABILITY, 8.0);       // Good scalability
-                scores.put(Parameter.CONSISTENCY, 8.5);       // Strong consistency
-                scores.put(Parameter.AVAILABILITY, 6.0);      // Not real-time critical
-                scores.put(Parameter.DURABILITY, 7.0);        // Good durability
-                scores.put(Parameter.MAINTAINABILITY, 6.0);   // Complex jobs
-                scores.put(Parameter.ENERGY_EFFICIENCY, 7.0); // Efficient for bulk
-                scores.put(Parameter.THROUGHPUT, 7.0);        // High throughput for batches
-                scores.put(Parameter.SECURITY, 7.5);          // Good security
-                break;
-
-            case EXTERNAL_SERVICE:
-                scores.put(Parameter.LATENCY, 5.0);           // Variable latency (network)
-                scores.put(Parameter.COST, 6.0);              // Usage-based pricing
-                scores.put(Parameter.SCALABILITY, 7.0);       // Depends on provider
-                scores.put(Parameter.CONSISTENCY, 6.0);       // Variable consistency
-                scores.put(Parameter.AVAILABILITY, 7.0);      // Depends on provider SLA
-                scores.put(Parameter.DURABILITY, 7.0);        // Provider-dependent
-                scores.put(Parameter.MAINTAINABILITY, 9.0);   // No maintenance required
-                scores.put(Parameter.ENERGY_EFFICIENCY, 8.0); // Provider-managed
-                scores.put(Parameter.THROUGHPUT, 6.0);        // Rate-limited
-                scores.put(Parameter.SECURITY, 6.0);          // Trust third-party
-                break;
-
-            case CLIENT:
-                scores.put(Parameter.LATENCY, 7.0);           // User-perceived latency
-                scores.put(Parameter.COST, 3.0);              // Low infrastructure cost
-                scores.put(Parameter.SCALABILITY, 9.0);       // Unlimited clients
-                scores.put(Parameter.CONSISTENCY, 5.0);       // Client-side consistency
-                scores.put(Parameter.AVAILABILITY, 8.0);      // Always available (offline support)
-                scores.put(Parameter.DURABILITY, 4.0);        // Local storage only
-                scores.put(Parameter.MAINTAINABILITY, 7.0);   // App updates required
-                scores.put(Parameter.ENERGY_EFFICIENCY, 6.0); // Device battery
-                scores.put(Parameter.THROUGHPUT, 6.0);        // Limited by network
-                scores.put(Parameter.SECURITY, 5.0);          // Client-side vulnerabilities
-                break;
-
-            default:
-                // Default neutral scores
-                for (Parameter param : Parameter.values()) {
-                    scores.put(param, 5.0);
-                }
+        // Convert string keys to Parameter enum
+        for (Map.Entry<String, Double> entry : subtypeConfig.entrySet()) {
+            try {
+                Parameter param = Parameter.valueOf(entry.getKey());
+                scores.put(param, entry.getValue());
+            } catch (IllegalArgumentException e) {
+                // Skip unknown parameters
+            }
         }
 
         return new HeuristicProfile(scores);
+    }
+
+    /**
+     * Get heuristics for a component with automatic subtype detection
+     */
+    public HeuristicProfile getHeuristicsForComponent(Component component) {
+        String subtype = detectSubtype(component);
+        return getHeuristicsForTypeAndSubtype(component.getType(), subtype);
+    }
+
+    /**
+     * Detect the subtype of a component
+     */
+    private String detectSubtype(Component component) {
+        if (component instanceof DatabaseComponent) {
+            DatabaseComponent db = (DatabaseComponent) component;
+            return db.getDatabaseType() != null ? db.getDatabaseType().name() : "default";
+        } else if (component instanceof CacheComponent) {
+            CacheComponent cache = (CacheComponent) component;
+            return cache.getCacheType() != null ? cache.getCacheType().name() : "default";
+        } else if (component instanceof APIServiceComponent) {
+            APIServiceComponent api = (APIServiceComponent) component;
+            return api.getApiType() != null ? api.getApiType().name() : "default";
+        } else if (component instanceof QueueComponent) {
+            QueueComponent queue = (QueueComponent) component;
+            return queue.getQueueType() != null ? queue.getQueueType().name() : "default";
+        } else if (component instanceof StorageComponent) {
+            StorageComponent storage = (StorageComponent) component;
+            return storage.getStorageType() != null ? storage.getStorageType().name() : "default";
+        } else if (component instanceof LoadBalancerComponent) {
+            LoadBalancerComponent lb = (LoadBalancerComponent) component;
+            return lb.getLbType() != null ? lb.getLbType().name() : "default";
+        }
+        return "default";
     }
 
     /**
@@ -162,6 +128,69 @@ public class HeuristicService {
      */
     public double calculateComponentScore(Component component, Map<Parameter, Double> weights) {
         return component.getHeuristics().getWeightedScore(weights);
+    }
+
+    /**
+     * Get default heuristic scores for a link type
+     */
+    public HeuristicProfile getDefaultHeuristicsForLinkType(LinkType linkType) {
+        Map<Parameter, Double> scores = new HashMap<>();
+
+        Map<String, Map<String, Double>> linksConfig = heuristicsConfig.get("LINKS");
+
+        if (linksConfig == null) {
+            // Return default neutral scores if LINKS config not found
+            for (Parameter param : Parameter.values()) {
+                scores.put(param, 5.0);
+            }
+            return new HeuristicProfile(scores);
+        }
+
+        Map<String, Double> linkTypeConfig = linksConfig.get(linkType.name());
+
+        if (linkTypeConfig == null) {
+            // Return neutral scores if link type not found
+            for (Parameter param : Parameter.values()) {
+                scores.put(param, 5.0);
+            }
+            return new HeuristicProfile(scores);
+        }
+
+        // Convert string keys to Parameter enum
+        for (Map.Entry<String, Double> entry : linkTypeConfig.entrySet()) {
+            try {
+                Parameter param = Parameter.valueOf(entry.getKey());
+                scores.put(param, entry.getValue());
+            } catch (IllegalArgumentException e) {
+                // Skip unknown parameters
+            }
+        }
+
+        return new HeuristicProfile(scores);
+    }
+
+    /**
+     * Get heuristics for a link with automatic type detection
+     */
+    public HeuristicProfile getHeuristicsForLink(Link link) {
+        return getDefaultHeuristicsForLinkType(link.getType());
+    }
+
+    /**
+     * Calculate weighted score for a specific link
+     */
+    public double calculateLinkScore(Link link, Map<Parameter, Double> weights) {
+        return link.getHeuristics().getWeightedScore(weights);
+    }
+
+    /**
+     * Update heuristic score for a link parameter
+     */
+    public void updateLinkHeuristicScore(Link link, Parameter parameter, double score) {
+        if (score < 0.0 || score > 10.0) {
+            throw new IllegalArgumentException("Score must be between 0.0 and 10.0");
+        }
+        link.getHeuristics().setScore(parameter, score);
     }
 
     /**
@@ -175,7 +204,7 @@ public class HeuristicService {
     }
 
     /**
-     * Get heuristic profile with custom adjustments based on properties
+     * Get heuristics for a component with custom adjustments based on properties
      */
     public HeuristicProfile getAdjustedHeuristics(ComponentType type, Map<String, Object> properties) {
         HeuristicProfile baseProfile = getDefaultHeuristicsForType(type);
@@ -243,5 +272,18 @@ public class HeuristicService {
         }
         return 1;
     }
-}
 
+    /**
+     * Reload heuristics configuration from JSON (useful for runtime updates)
+     */
+    public void reloadConfiguration() {
+        loadHeuristicsFromJson();
+    }
+
+    /**
+     * Get all available subtypes for a component type
+     */
+    public Map<String, Map<String, Double>> getAvailableSubtypes(ComponentType type) {
+        return heuristicsConfig.getOrDefault(type.name(), new HashMap<>());
+    }
+}

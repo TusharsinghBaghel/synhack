@@ -3,6 +3,7 @@ package com.systemsimulator.utils;
 import com.systemsimulator.model.ConnectionRule;
 import com.systemsimulator.model.LinkType;
 import com.systemsimulator.model.rules.*;
+import lombok.Getter;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -159,6 +160,7 @@ public class ConnectionRuleRegistry {
     /**
      * Inner class for registry statistics
      */
+    @Getter
     public static class RegistryStats {
         private final int totalRules;
         private final int supportedLinkTypes;
@@ -169,10 +171,6 @@ public class ConnectionRuleRegistry {
             this.supportedLinkTypes = supportedLinkTypes;
             this.ruleCountsByType = ruleCountsByType;
         }
-
-        public int getTotalRules() { return totalRules; }
-        public int getSupportedLinkTypes() { return supportedLinkTypes; }
-        public Map<LinkType, Integer> getRuleCountsByType() { return ruleCountsByType; }
 
         @Override
         public String toString() {
