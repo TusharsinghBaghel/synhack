@@ -1,5 +1,10 @@
 package com.systemsimulator.model;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Setter
+@Getter
 public class DatabaseComponent extends Component {
     public enum DatabaseType {
         SQL, NOSQL, IN_MEMORY, COLUMN_STORE, DOCUMENT_DB, GRAPH_DB
@@ -17,7 +22,5 @@ public class DatabaseComponent extends Component {
         this.databaseType = databaseType;
     }
 
-    public DatabaseType getDatabaseType() { return databaseType; }
-    public void setDatabaseType(DatabaseType databaseType) { this.databaseType = databaseType; }
 }
 

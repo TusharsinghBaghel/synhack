@@ -426,6 +426,103 @@
       "THROUGHPUT": 6.0,
       "SECURITY": 5.0
     }
+  },
+  "LINKS": {
+    "API_CALL": {
+      "LATENCY": 8.0,
+      "COST": 5.0,
+      "SCALABILITY": 8.0,
+      "CONSISTENCY": 8.0,
+      "AVAILABILITY": 8.5,
+      "DURABILITY": 7.0,
+      "MAINTAINABILITY": 8.0,
+      "ENERGY_EFFICIENCY": 7.0,
+      "THROUGHPUT": 8.0,
+      "SECURITY": 7.5
+    },
+    "STREAM": {
+      "LATENCY": 7.0,
+      "COST": 6.5,
+      "SCALABILITY": 9.5,
+      "CONSISTENCY": 7.0,
+      "AVAILABILITY": 8.5,
+      "DURABILITY": 8.0,
+      "MAINTAINABILITY": 7.0,
+      "ENERGY_EFFICIENCY": 6.5,
+      "THROUGHPUT": 9.5,
+      "SECURITY": 7.0
+    },
+    "REPLICATION": {
+      "LATENCY": 6.5,
+      "COST": 7.0,
+      "SCALABILITY": 9.0,
+      "CONSISTENCY": 9.5,
+      "AVAILABILITY": 9.5,
+      "DURABILITY": 9.5,
+      "MAINTAINABILITY": 7.0,
+      "ENERGY_EFFICIENCY": 6.0,
+      "THROUGHPUT": 7.5,
+      "SECURITY": 8.5
+    },
+    "ETL_PIPELINE": {
+      "LATENCY": 4.0,
+      "COST": 7.5,
+      "SCALABILITY": 8.0,
+      "CONSISTENCY": 9.0,
+      "AVAILABILITY": 7.0,
+      "DURABILITY": 8.5,
+      "MAINTAINABILITY": 6.5,
+      "ENERGY_EFFICIENCY": 6.0,
+      "THROUGHPUT": 7.0,
+      "SECURITY": 7.5
+    },
+    "BATCH_TRANSFER": {
+      "LATENCY": 3.0,
+      "COST": 8.5,
+      "SCALABILITY": 8.5,
+      "CONSISTENCY": 8.0,
+      "AVAILABILITY": 7.0,
+      "DURABILITY": 9.0,
+      "MAINTAINABILITY": 7.0,
+      "ENERGY_EFFICIENCY": 7.0,
+      "THROUGHPUT": 6.5,
+      "SECURITY": 8.0
+    },
+    "EVENT_FLOW": {
+      "LATENCY": 7.5,
+      "COST": 6.0,
+      "SCALABILITY": 9.0,
+      "CONSISTENCY": 7.5,
+      "AVAILABILITY": 8.5,
+      "DURABILITY": 8.0,
+      "MAINTAINABILITY": 7.5,
+      "ENERGY_EFFICIENCY": 7.0,
+      "THROUGHPUT": 8.5,
+      "SECURITY": 7.5
+    },
+    "CACHE_LOOKUP": {
+      "LATENCY": 9.5,
+      "COST": 4.0,
+      "SCALABILITY": 8.5,
+      "CONSISTENCY": 6.5,
+      "AVAILABILITY": 8.0,
+      "DURABILITY": 5.0,
+      "MAINTAINABILITY": 8.5,
+      "ENERGY_EFFICIENCY": 8.0,
+      "THROUGHPUT": 9.5,
+      "SECURITY": 6.5
+    },
+    "DATABASE_QUERY": {
+      "LATENCY": 6.5,
+      "COST": 6.0,
+      "SCALABILITY": 7.5,
+      "CONSISTENCY": 9.0,
+      "AVAILABILITY": 8.0,
+      "DURABILITY": 8.5,
+      "MAINTAINABILITY": 7.0,
+      "ENERGY_EFFICIENCY": 6.5,
+      "THROUGHPUT": 7.5,
+      "SECURITY": 8.0
+    }
   }
 }
-

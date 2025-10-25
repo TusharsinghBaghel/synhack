@@ -1,5 +1,10 @@
 package com.systemsimulator.model;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Setter
+@Getter
 public class CacheComponent extends Component {
     public enum CacheType {
         IN_MEMORY, DISTRIBUTED, LOCAL
@@ -17,7 +22,5 @@ public class CacheComponent extends Component {
         this.cacheType = cacheType;
     }
 
-    public CacheType getCacheType() { return cacheType; }
-    public void setCacheType(CacheType cacheType) { this.cacheType = cacheType; }
 }
 

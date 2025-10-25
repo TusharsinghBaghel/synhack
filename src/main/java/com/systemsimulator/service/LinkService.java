@@ -20,6 +20,9 @@ public class LinkService {
     @Autowired
     private ComponentService componentService;
 
+    @Autowired
+    private HeuristicService heuristicService;
+
     /**
      * Create a new link between components with validation
      */
@@ -40,6 +43,11 @@ public class LinkService {
         }
 
         Link link = new Link(id, source, target, linkType);
+
+        // Initialize default heuristics for the link type
+        HeuristicProfile heuristics = heuristicService.getDefaultHeuristicsForLinkType(linkType);
+        link.setHeuristics(heuristics);
+
         return linkRepository.save(link);
     }
 
@@ -198,4 +206,3 @@ public class LinkService {
         public int getTotalConnections() { return incomingLinks + outgoingLinks; }
     }
 }
-

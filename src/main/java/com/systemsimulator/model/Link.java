@@ -13,6 +13,7 @@ public class Link {
     private Component source;
     private Component target;
     private LinkType type;
+    private HeuristicProfile heuristics = new HeuristicProfile();
     private Map<String, Object> properties = new HashMap<>();
 
     public Link() {}
@@ -25,4 +26,3 @@ public class Link {
     }
 
 }
-

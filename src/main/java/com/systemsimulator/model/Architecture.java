@@ -1,8 +1,13 @@
 package com.systemsimulator.model;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@Setter
+@Getter
 public class Architecture {
     private String id;
     private String name;
@@ -15,18 +20,6 @@ public class Architecture {
         this.id = id;
         this.name = name;
     }
-
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public List<Component> getComponents() { return components; }
-    public void setComponents(List<Component> components) { this.components = components; }
-
-    public List<Link> getLinks() { return links; }
-    public void setLinks(List<Link> links) { this.links = links; }
 
     public void addComponent(Component component) {
         this.components.add(component);

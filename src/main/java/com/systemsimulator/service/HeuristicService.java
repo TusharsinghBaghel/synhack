@@ -131,6 +131,69 @@ public class HeuristicService {
     }
 
     /**
+     * Get default heuristic scores for a link type
+     */
+    public HeuristicProfile getDefaultHeuristicsForLinkType(LinkType linkType) {
+        Map<Parameter, Double> scores = new HashMap<>();
+
+        Map<String, Map<String, Double>> linksConfig = heuristicsConfig.get("LINKS");
+
+        if (linksConfig == null) {
+            // Return default neutral scores if LINKS config not found
+            for (Parameter param : Parameter.values()) {
+                scores.put(param, 5.0);
+            }
+            return new HeuristicProfile(scores);
+        }
+
+        Map<String, Double> linkTypeConfig = linksConfig.get(linkType.name());
+
+        if (linkTypeConfig == null) {
+            // Return neutral scores if link type not found
+            for (Parameter param : Parameter.values()) {
+                scores.put(param, 5.0);
+            }
+            return new HeuristicProfile(scores);
+        }
+
+        // Convert string keys to Parameter enum
+        for (Map.Entry<String, Double> entry : linkTypeConfig.entrySet()) {
+            try {
+                Parameter param = Parameter.valueOf(entry.getKey());
+                scores.put(param, entry.getValue());
+            } catch (IllegalArgumentException e) {
+                // Skip unknown parameters
+            }
+        }
+
+        return new HeuristicProfile(scores);
+    }
+
+    /**
+     * Get heuristics for a link with automatic type detection
+     */
+    public HeuristicProfile getHeuristicsForLink(Link link) {
+        return getDefaultHeuristicsForLinkType(link.getType());
+    }
+
+    /**
+     * Calculate weighted score for a specific link
+     */
+    public double calculateLinkScore(Link link, Map<Parameter, Double> weights) {
+        return link.getHeuristics().getWeightedScore(weights);
+    }
+
+    /**
+     * Update heuristic score for a link parameter
+     */
+    public void updateLinkHeuristicScore(Link link, Parameter parameter, double score) {
+        if (score < 0.0 || score > 10.0) {
+            throw new IllegalArgumentException("Score must be between 0.0 and 10.0");
+        }
+        link.getHeuristics().setScore(parameter, score);
+    }
+
+    /**
      * Update heuristic score for a specific parameter
      */
     public void updateHeuristicScore(Component component, Parameter parameter, double score) {
@@ -141,7 +204,7 @@ public class HeuristicService {
     }
 
     /**
-     * Get heuristic profile with custom adjustments based on properties
+     * Get heuristics for a component with custom adjustments based on properties
      */
     public HeuristicProfile getAdjustedHeuristics(ComponentType type, Map<String, Object> properties) {
         HeuristicProfile baseProfile = getDefaultHeuristicsForType(type);

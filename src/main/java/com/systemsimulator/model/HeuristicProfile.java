@@ -1,22 +1,19 @@
 package com.systemsimulator.model;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Setter
+@Getter
 public class HeuristicProfile {
     private Map<Parameter, Double> scores = new HashMap<>();
 
     public HeuristicProfile() {}
 
     public HeuristicProfile(Map<Parameter, Double> scores) {
-        this.scores = scores;
-    }
-
-    public Map<Parameter, Double> getScores() {
-        return scores;
-    }
-
-    public void setScores(Map<Parameter, Double> scores) {
         this.scores = scores;
     }
 
