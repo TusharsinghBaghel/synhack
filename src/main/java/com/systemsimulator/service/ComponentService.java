@@ -111,6 +111,14 @@ public class ComponentService {
                     }
                 }
                 return new LoadBalancerComponent(id, name, lbType);
+            case CLIENT:
+                return new ClientComponent(id, name);
+            case STREAM_PROCESSOR:
+                return new StreamProcessorComponent(id, name);
+            case BATCH_PROCESSOR:
+                return new BatchProcessorComponent(id, name);
+            case EXTERNAL_SERVICE:
+                return new ExternalServiceComponent(id, name);
             default:
                 throw new IllegalArgumentException("Unsupported component type: " + type);
         }

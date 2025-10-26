@@ -169,6 +169,59 @@ function App() {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
+  const createComponentOnCanvas = useCallback(
+    async (type, position, subtype) => {
+      try {
+        const properties = subtype ? { subtype } : {};
+
+        const response = await componentAPI.create({
+          type: type,
+          name: `${type}-${Date.now()}`,
+          properties: properties,
+        });
+
+        const newNode = {
+          id: `node-${response.data.id}`,
+          type: 'component',
+          position,
+          data: {
+            label: response.data.name,
+            componentType: type,
+            componentId: response.data.id,
+            heuristics: response.data.heuristics,
+            properties: response.data.properties,
+            subtype: subtype,
+          },
+        };
+
+        setNodes((nds) => nds.concat(newNode));
+
+        // Add component to architecture - send only the component ID
+        if (architectureId) {
+          await architectureAPI.addComponent(architectureId, { componentId: response.data.id });
+        }
+
+        const subtypeLabel = subtype ? ` (${subtype.replace('_', ' ')})` : '';
+        showNotification(`Component added successfully${subtypeLabel}`, 'success');
+      } catch (error) {
+        // Show detailed error message from backend if available
+        const errorMessage = error.response?.data?.error
+          || error.response?.data?.message
+          || error.message
+          || 'Failed to add component';
+        showNotification(errorMessage, 'error');
+        console.error('Failed to create component:', error);
+        console.error('Error details:', {
+          type,
+          subtype,
+          response: error.response?.data,
+          status: error.response?.status
+        });
+      }
+    },
+    [architectureId, setNodes, showNotification]
+  );
+
   const onDrop = useCallback(
     async (event) => {
       event.preventDefault();
@@ -194,47 +247,8 @@ function App() {
         await createComponentOnCanvas(type, position, null);
       }
     },
-    [reactFlowInstance, architectureId]
+    [reactFlowInstance, createComponentOnCanvas]
   );
-
-  const createComponentOnCanvas = async (type, position, subtype) => {
-    try {
-      const properties = subtype ? { subtype } : {};
-
-      const response = await componentAPI.create({
-        type: type,
-        name: `${type}-${Date.now()}`,
-        properties: properties,
-      });
-
-      const newNode = {
-        id: `node-${response.data.id}`,
-        type: 'component',
-        position,
-        data: {
-          label: response.data.name,
-          componentType: type,
-          componentId: response.data.id,
-          heuristics: response.data.heuristics,
-          properties: response.data.properties,
-          subtype: subtype,
-        },
-      };
-
-      setNodes((nds) => nds.concat(newNode));
-
-      // Add component to architecture - send only the component ID
-      if (architectureId) {
-        await architectureAPI.addComponent(architectureId, { componentId: response.data.id });
-      }
-
-      const subtypeLabel = subtype ? ` (${subtype.replace('_', ' ')})` : '';
-      showNotification(`Component added successfully${subtypeLabel}`, 'success');
-    } catch (error) {
-      showNotification('Failed to add component', 'error');
-      console.error('Failed to create component:', error);
-    }
-  };
 
   const onNodeClick = useCallback((event, node) => {
     setSelectedNode(node);
