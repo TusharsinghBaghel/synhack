@@ -90,6 +90,34 @@ public class ArchitectureService {
     }
 
     /**
+     * Add a component to an architecture by component ID
+     */
+    public Architecture addComponentToArchitectureById(String architectureId, String componentId) {
+        Architecture architecture = getArchitectureById(architectureId)
+                .orElseThrow(() -> new IllegalArgumentException("Architecture not found: " + architectureId));
+
+        Component component = componentService.getComponentById(componentId)
+                .orElseThrow(() -> new IllegalArgumentException("Component not found: " + componentId));
+
+        architecture.addComponent(component);
+        return architectureRepository.save(architecture);
+    }
+
+    /**
+     * Add a link to an architecture by link ID
+     */
+    public Architecture addLinkToArchitectureById(String architectureId, String linkId) {
+        Architecture architecture = getArchitectureById(architectureId)
+                .orElseThrow(() -> new IllegalArgumentException("Architecture not found: " + architectureId));
+
+        Link link = linkService.getLinkById(linkId)
+                .orElseThrow(() -> new IllegalArgumentException("Link not found: " + linkId));
+
+        architecture.addLink(link);
+        return architectureRepository.save(architecture);
+    }
+
+    /**
      * Evaluate architecture and return overall score
      */
     public double evaluateArchitecture(String architectureId) {
@@ -438,4 +466,3 @@ public class ArchitectureService {
         }
     }
 }
-

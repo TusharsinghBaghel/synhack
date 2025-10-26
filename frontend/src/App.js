@@ -15,11 +15,22 @@ import ComponentPalette from './components/ComponentPalette';
 import ComponentNode from './components/ComponentNode';
 import Sidebar from './components/Sidebar';
 import EvaluationPanel from './components/EvaluationPanel';
+import SubtypeModal from './components/SubtypeModal';
 import { componentAPI, linkAPI, architectureAPI } from './api';
 
 const nodeTypes = {
   component: ComponentNode,
 };
+
+// Components that have subtypes
+const COMPONENTS_WITH_SUBTYPES = [
+  'DATABASE',
+  'CACHE',
+  'API_SERVICE',
+  'QUEUE',
+  'STORAGE',
+  'LOAD_BALANCER',
+];
 
 function App() {
   const reactFlowWrapper = useRef(null);
@@ -34,6 +45,10 @@ function App() {
   const [showEvaluation, setShowEvaluation] = useState(false);
   const [evaluation, setEvaluation] = useState(null);
   const [notification, setNotification] = useState(null);
+
+  // Subtype modal state
+  const [showSubtypeModal, setShowSubtypeModal] = useState(false);
+  const [pendingComponent, setPendingComponent] = useState(null);
 
   useEffect(() => {
     loadLinkTypes();
@@ -141,7 +156,7 @@ function App() {
         return null;
       }
 
-      // For MVP, just use the first suggestion or prompt user
+      // For MVP, just use the first suggestion
       return suggestions[0];
     } catch (error) {
       // Fallback to API_CALL
@@ -170,42 +185,56 @@ function App() {
         y: event.clientY - reactFlowBounds.top,
       });
 
-      // Create component in backend
-      try {
-        const response = await componentAPI.create({
-          type: type,
-          name: `${type}-${Date.now()}`,
-          properties: {},
-        });
-
-        const newNode = {
-          id: `node-${response.data.id}`,
-          type: 'component',
-          position,
-          data: {
-            label: response.data.name,
-            componentType: type,
-            componentId: response.data.id,
-            heuristics: response.data.heuristics,
-            properties: response.data.properties,
-          },
-        };
-
-        setNodes((nds) => nds.concat(newNode));
-
-        // Add component to architecture
-        if (architectureId) {
-          await architectureAPI.addComponent(architectureId, response.data);
-        }
-
-        showNotification('Component added successfully', 'success');
-      } catch (error) {
-        showNotification('Failed to add component', 'error');
-        console.error('Failed to create component:', error);
+      // Check if component has subtypes - if yes, show modal first
+      if (COMPONENTS_WITH_SUBTYPES.includes(type)) {
+        setPendingComponent({ type, position });
+        setShowSubtypeModal(true);
+      } else {
+        // Create component directly for components without subtypes
+        await createComponentOnCanvas(type, position, null);
       }
     },
     [reactFlowInstance, architectureId]
   );
+
+  const createComponentOnCanvas = async (type, position, subtype) => {
+    try {
+      const properties = subtype ? { subtype } : {};
+
+      const response = await componentAPI.create({
+        type: type,
+        name: `${type}-${Date.now()}`,
+        properties: properties,
+      });
+
+      const newNode = {
+        id: `node-${response.data.id}`,
+        type: 'component',
+        position,
+        data: {
+          label: response.data.name,
+          componentType: type,
+          componentId: response.data.id,
+          heuristics: response.data.heuristics,
+          properties: response.data.properties,
+          subtype: subtype,
+        },
+      };
+
+      setNodes((nds) => nds.concat(newNode));
+
+      // Add component to architecture - send only the component ID
+      if (architectureId) {
+        await architectureAPI.addComponent(architectureId, { componentId: response.data.id });
+      }
+
+      const subtypeLabel = subtype ? ` (${subtype.replace('_', ' ')})` : '';
+      showNotification(`Component added successfully${subtypeLabel}`, 'success');
+    } catch (error) {
+      showNotification('Failed to add component', 'error');
+      console.error('Failed to create component:', error);
+    }
+  };
 
   const onNodeClick = useCallback((event, node) => {
     setSelectedNode(node);
@@ -298,6 +327,21 @@ function App() {
     }
   };
 
+  const handleSubtypeSelect = async (subtype) => {
+    if (!pendingComponent) return;
+
+    const { type, position } = pendingComponent;
+    await createComponentOnCanvas(type, position, subtype);
+
+    setPendingComponent(null);
+    setShowSubtypeModal(false);
+  };
+
+  const handleSubtypeCancel = () => {
+    setPendingComponent(null);
+    setShowSubtypeModal(false);
+  };
+
   return (
     <div className="app">
       {notification && (
@@ -376,9 +420,16 @@ function App() {
           onClose={() => setShowEvaluation(false)}
         />
       )}
+
+      {showSubtypeModal && pendingComponent && (
+        <SubtypeModal
+          componentType={pendingComponent.type}
+          onSelect={handleSubtypeSelect}
+          onCancel={handleSubtypeCancel}
+        />
+      )}
     </div>
   );
 }
 
 export default App;
-

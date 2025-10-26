@@ -122,6 +122,51 @@ public class ComponentController {
         return ResponseEntity.ok(new ExistsResponse(id, exists));
     }
 
+    /**
+     * Get available subtypes for a component type
+     */
+    @GetMapping("/subtypes/{type}")
+    public ResponseEntity<?> getSubtypesForType(@PathVariable ComponentType type) {
+        List<String> subtypes = new java.util.ArrayList<>();
+
+        switch (type) {
+            case DATABASE:
+                subtypes = java.util.Arrays.stream(DatabaseComponent.DatabaseType.values())
+                        .map(Enum::name)
+                        .toList();
+                break;
+            case CACHE:
+                subtypes = java.util.Arrays.stream(CacheComponent.CacheType.values())
+                        .map(Enum::name)
+                        .toList();
+                break;
+            case API_SERVICE:
+                subtypes = java.util.Arrays.stream(APIServiceComponent.APIType.values())
+                        .map(Enum::name)
+                        .toList();
+                break;
+            case QUEUE:
+                subtypes = java.util.Arrays.stream(QueueComponent.QueueType.values())
+                        .map(Enum::name)
+                        .toList();
+                break;
+            case STORAGE:
+                subtypes = java.util.Arrays.stream(StorageComponent.StorageType.values())
+                        .map(Enum::name)
+                        .toList();
+                break;
+            case LOAD_BALANCER:
+                subtypes = java.util.Arrays.stream(LoadBalancerComponent.LoadBalancerType.values())
+                        .map(Enum::name)
+                        .toList();
+                break;
+            default:
+                subtypes = List.of("default");
+        }
+
+        return ResponseEntity.ok(new SubtypesResponse(type, subtypes));
+    }
+
     // ==================== DTOs ====================
 
     public static class ComponentRequest {
@@ -173,5 +218,18 @@ public class ComponentController {
 
         public String getId() { return id; }
         public boolean isExists() { return exists; }
+    }
+
+    public static class SubtypesResponse {
+        private ComponentType type;
+        private List<String> subtypes;
+
+        public SubtypesResponse(ComponentType type, List<String> subtypes) {
+            this.type = type;
+            this.subtypes = subtypes;
+        }
+
+        public ComponentType getType() { return type; }
+        public List<String> getSubtypes() { return subtypes; }
     }
 }
