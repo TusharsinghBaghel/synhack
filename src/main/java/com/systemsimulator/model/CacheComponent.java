@@ -14,13 +14,15 @@ public class CacheComponent extends Component {
 
     public CacheComponent() {
         super();
-        setType(ComponentType.CACHE);
     }
 
     public CacheComponent(String id, String name, CacheType cacheType) {
-        super(id, name, ComponentType.CACHE);
+        super(id, name);
         this.cacheType = cacheType;
     }
 
+    @Override
+    public ComponentType getType() {
+        return ComponentType.CACHE;
+    }
 }
-

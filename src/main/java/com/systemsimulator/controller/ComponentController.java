@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,8 @@ import java.util.UUID;
 @RequestMapping("/api/components")
 @CrossOrigin(origins = "*")
 public class ComponentController {
+
+    private static final Logger logger = LoggerFactory.getLogger(ComponentController.class);
 
     @Autowired
     private ComponentService componentService;
@@ -44,6 +48,8 @@ public class ComponentController {
     @PostMapping
     public ResponseEntity<?> createComponent(@RequestBody ComponentRequest request) {
         try {
+            logger.info("Creating component: type={}, name={}", request.getType(), request.getName());
+
             String id = UUID.randomUUID().toString();
             Component component = componentService.createComponent(
                     request.getType(),
@@ -51,8 +57,12 @@ public class ComponentController {
                     request.getName(),
                     request.getProperties() != null ? request.getProperties() : Map.of()
             );
+
+            logger.info("Successfully created component: id={}, type={}, name={}", id, request.getType(), request.getName());
             return ResponseEntity.status(HttpStatus.CREATED).body(component);
         } catch (Exception e) {
+            logger.error("Failed to create component: type={}, name={}, error={}",
+                    request.getType(), request.getName(), e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(new ErrorResponse("Failed to create component: " + e.getMessage()));
         }

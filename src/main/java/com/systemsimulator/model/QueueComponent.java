@@ -1,5 +1,10 @@
 package com.systemsimulator.model;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Setter
+@Getter
 public class QueueComponent extends Component {
     public enum QueueType {
         MESSAGE_QUEUE, TASK_QUEUE, STREAM, EVENT_BUS
@@ -9,15 +14,15 @@ public class QueueComponent extends Component {
 
     public QueueComponent() {
         super();
-        setType(ComponentType.QUEUE);
     }
 
     public QueueComponent(String id, String name, QueueType queueType) {
-        super(id, name, ComponentType.QUEUE);
+        super(id, name);
         this.queueType = queueType;
     }
 
-    public QueueType getQueueType() { return queueType; }
-    public void setQueueType(QueueType queueType) { this.queueType = queueType; }
+    @Override
+    public ComponentType getType() {
+        return ComponentType.QUEUE;
+    }
 }
-

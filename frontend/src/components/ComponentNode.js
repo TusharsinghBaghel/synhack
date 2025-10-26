@@ -32,6 +32,19 @@ const ComponentNode = ({ data, isConnectable }) => {
   const icon = COMPONENT_ICONS[data.componentType] || '📦';
   const color = COMPONENT_COLORS[data.componentType] || '#6b7280';
 
+  // Format the display label with subtype if available
+  const getDisplayLabel = () => {
+    if (data.subtype) {
+      return (
+        <>
+          <div className="node-subtype">{data.subtype.replace(/_/g, ' ')}</div>
+          <div className="node-custom-name">{data.customName || data.label}</div>
+        </>
+      );
+    }
+    return <div className="node-custom-name">{data.customName || data.label}</div>;
+  };
+
   return (
     <div className="component-node" style={{ borderColor: color }}>
       <Handle
@@ -44,8 +57,7 @@ const ComponentNode = ({ data, isConnectable }) => {
         <div className="node-icon" style={{ backgroundColor: color }}>
           {icon}
         </div>
-        <div className="node-label">{data.label}</div>
-        <div className="node-type">{data.componentType}</div>
+        <div className="node-label">{getDisplayLabel()}</div>
       </div>
       <Handle
         type="source"
@@ -58,4 +70,3 @@ const ComponentNode = ({ data, isConnectable }) => {
 };
 
 export default ComponentNode;
-

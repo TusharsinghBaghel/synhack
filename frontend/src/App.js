@@ -16,13 +16,14 @@ import ComponentNode from './components/ComponentNode';
 import Sidebar from './components/Sidebar';
 import EvaluationPanel from './components/EvaluationPanel';
 import SubtypeModal from './components/SubtypeModal';
+import LinkTypeModal from './components/LinkTypeModal';
+import ComponentNameModal from './components/ComponentNameModal';
 import { componentAPI, linkAPI, architectureAPI } from './api';
 
 const nodeTypes = {
   component: ComponentNode,
 };
 
-// Components that have subtypes
 const COMPONENTS_WITH_SUBTYPES = [
   'DATABASE',
   'CACHE',
@@ -46,9 +47,15 @@ function App() {
   const [evaluation, setEvaluation] = useState(null);
   const [notification, setNotification] = useState(null);
 
-  // Subtype modal state
   const [showSubtypeModal, setShowSubtypeModal] = useState(false);
   const [pendingComponent, setPendingComponent] = useState(null);
+
+  const [showLinkTypeModal, setShowLinkTypeModal] = useState(false);
+  const [pendingConnection, setPendingConnection] = useState(null);
+  const [availableLinkTypes, setAvailableLinkTypes] = useState([]);
+
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [pendingComponentWithSubtype, setPendingComponentWithSubtype] = useState(null);
 
   useEffect(() => {
     loadLinkTypes();
@@ -88,79 +95,82 @@ function App() {
 
       if (!sourceNode || !targetNode) return;
 
-      // Show link type selector
-      const linkType = await selectLinkType(sourceNode, targetNode);
-      if (!linkType) return;
-
-      // Validate the connection
       try {
-        const validationResponse = await linkAPI.validate({
+        const response = await linkAPI.suggest({
           sourceId: sourceNode.data.componentId,
           targetId: targetNode.data.componentId,
-          linkType: linkType,
         });
 
-        if (!validationResponse.data.valid) {
-          showNotification(validationResponse.data.message || 'Invalid connection', 'error');
+        const suggestions = response.data.validLinkTypes || linkTypes;
+
+        if (suggestions.length === 0) {
+          showNotification('No valid link types for this connection', 'error');
           return;
         }
 
-        // Create the link in backend
-        const linkResponse = await linkAPI.create({
-          sourceId: sourceNode.data.componentId,
-          targetId: targetNode.data.componentId,
-          linkType: linkType,
-        });
-
-        const newEdge = {
-          ...params,
-          id: linkResponse.data.id,
-          type: 'smoothstep',
-          animated: true,
-          label: linkType.replace('_', ' '),
-          data: {
-            linkId: linkResponse.data.id,
-            linkType: linkType,
-            heuristics: linkResponse.data.heuristics,
-          },
-        };
-
-        setEdges((eds) => addEdge(newEdge, eds));
-
-        // Add link to architecture
-        if (architectureId) {
-          await architectureAPI.addLink(architectureId, linkResponse.data);
+        if (suggestions.length > 1) {
+          setPendingConnection({
+            params: params,
+            sourceNode: sourceNode,
+            targetNode: targetNode,
+          });
+          setAvailableLinkTypes(suggestions);
+          setShowLinkTypeModal(true);
+          return;
         }
 
-        showNotification('Connection created successfully', 'success');
+        const linkType = suggestions[0];
+        await createConnection(params, sourceNode, targetNode, linkType);
       } catch (error) {
-        showNotification(error.response?.data?.error || 'Failed to create connection', 'error');
-        console.error('Failed to create connection:', error);
+        showNotification('Failed to get link type suggestions', 'error');
+        console.error('Failed to get link type suggestions:', error);
       }
     },
-    [nodes, edges, architectureId]
+    [nodes, edges, architectureId, linkTypes]
   );
 
-  const selectLinkType = async (sourceNode, targetNode) => {
-    // Get suggestions from backend
+  const createConnection = async (params, sourceNode, targetNode, linkType) => {
     try {
-      const response = await linkAPI.suggest({
+      const validationResponse = await linkAPI.validate({
         sourceId: sourceNode.data.componentId,
         targetId: targetNode.data.componentId,
+        linkType: linkType,
       });
 
-      const suggestions = response.data.validLinkTypes || linkTypes;
-
-      if (suggestions.length === 0) {
-        showNotification('No valid link types for this connection', 'error');
-        return null;
+      if (!validationResponse.data.valid) {
+        showNotification(validationResponse.data.message || 'Invalid connection', 'error');
+        return;
       }
 
-      // For MVP, just use the first suggestion
-      return suggestions[0];
+      const linkResponse = await linkAPI.create({
+        sourceId: sourceNode.data.componentId,
+        targetId: targetNode.data.componentId,
+        linkType: linkType,
+      });
+
+      const newEdge = {
+        ...params,
+        id: linkResponse.data.id,
+        type: 'smoothstep',
+        animated: true,
+        label: linkType.replace(/_/g, ' '),
+        data: {
+          linkId: linkResponse.data.id,
+          linkType: linkType,
+          heuristics: linkResponse.data.heuristics,
+        },
+      };
+
+      setEdges((eds) => addEdge(newEdge, eds));
+
+      if (architectureId) {
+        await architectureAPI.addLink(architectureId, { linkId: linkResponse.data.id });
+      }
+
+      showNotification('Connection created successfully', 'success');
     } catch (error) {
-      // Fallback to API_CALL
-      return 'API_CALL';
+      showNotification(error.response?.data?.error || 'Failed to create connection', 'error');
+      console.error('Failed to create connection:', error);
     }
   };
 
@@ -168,6 +178,52 @@ function App() {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
+
+  const createComponentOnCanvas = useCallback(
+    async (type, position, subtype, customName) => {
+      try {
+        const properties = subtype ? { subtype } : {};
+
+        const response = await componentAPI.create({
+          type: type,
+          name: customName || `${type}-${Date.now()}`,
+          properties: properties,
+        });
+
+        const newNode = {
+          id: `node-${response.data.id}`,
+          type: 'component',
+          position,
+          data: {
+            label: response.data.name,
+            customName: customName,
+            componentType: type,
+            componentId: response.data.id,
+            heuristics: response.data.heuristics,
+            properties: response.data.properties,
+            subtype: subtype,
+          },
+        };
+
+        setNodes((nds) => nds.concat(newNode));
+
+        if (architectureId) {
+          await architectureAPI.addComponent(architectureId, { componentId: response.data.id });
+        }
+
+        const subtypeLabel = subtype ? ` (${subtype.replace(/_/g, ' ')})` : '';
+        showNotification(`Component added successfully${subtypeLabel}`, 'success');
+      } catch (error) {
+        const errorMessage = error.response?.data?.error
+          || error.response?.data?.message
+          || error.message
+          || 'Failed to add component';
+        showNotification(errorMessage, 'error');
+        console.error('Failed to create component:', error);
+      }
+    },
+    [architectureId, setNodes, showNotification]
+  );
 
   const onDrop = useCallback(
     async (event) => {
@@ -185,56 +241,16 @@ function App() {
         y: event.clientY - reactFlowBounds.top,
       });
 
-      // Check if component has subtypes - if yes, show modal first
+      setPendingComponent({ type, position });
+
       if (COMPONENTS_WITH_SUBTYPES.includes(type)) {
-        setPendingComponent({ type, position });
         setShowSubtypeModal(true);
       } else {
-        // Create component directly for components without subtypes
-        await createComponentOnCanvas(type, position, null);
+        setShowNameModal(true);
       }
     },
-    [reactFlowInstance, architectureId]
+    [reactFlowInstance]
   );
-
-  const createComponentOnCanvas = async (type, position, subtype) => {
-    try {
-      const properties = subtype ? { subtype } : {};
-
-      const response = await componentAPI.create({
-        type: type,
-        name: `${type}-${Date.now()}`,
-        properties: properties,
-      });
-
-      const newNode = {
-        id: `node-${response.data.id}`,
-        type: 'component',
-        position,
-        data: {
-          label: response.data.name,
-          componentType: type,
-          componentId: response.data.id,
-          heuristics: response.data.heuristics,
-          properties: response.data.properties,
-          subtype: subtype,
-        },
-      };
-
-      setNodes((nds) => nds.concat(newNode));
-
-      // Add component to architecture - send only the component ID
-      if (architectureId) {
-        await architectureAPI.addComponent(architectureId, { componentId: response.data.id });
-      }
-
-      const subtypeLabel = subtype ? ` (${subtype.replace('_', ' ')})` : '';
-      showNotification(`Component added successfully${subtypeLabel}`, 'success');
-    } catch (error) {
-      showNotification('Failed to add component', 'error');
-      console.error('Failed to create component:', error);
-    }
-  };
 
   const onNodeClick = useCallback((event, node) => {
     setSelectedNode(node);
@@ -331,15 +347,48 @@ function App() {
     if (!pendingComponent) return;
 
     const { type, position } = pendingComponent;
-    await createComponentOnCanvas(type, position, subtype);
-
-    setPendingComponent(null);
+    setPendingComponentWithSubtype({ type, position, subtype });
     setShowSubtypeModal(false);
+    setShowNameModal(true);
   };
 
   const handleSubtypeCancel = () => {
     setPendingComponent(null);
     setShowSubtypeModal(false);
+  };
+
+  const handleNameConfirm = async (customName) => {
+    if (pendingComponentWithSubtype) {
+      const { type, position, subtype } = pendingComponentWithSubtype;
+      await createComponentOnCanvas(type, position, subtype, customName);
+      setPendingComponentWithSubtype(null);
+    } else if (pendingComponent) {
+      const { type, position } = pendingComponent;
+      await createComponentOnCanvas(type, position, null, customName);
+      setPendingComponent(null);
+    }
+    setShowNameModal(false);
+  };
+
+  const handleNameCancel = () => {
+    setPendingComponent(null);
+    setPendingComponentWithSubtype(null);
+    setShowNameModal(false);
+  };
+
+  const handleLinkTypeSelect = async (linkType) => {
+    if (!pendingConnection) return;
+
+    const { params, sourceNode, targetNode } = pendingConnection;
+    await createConnection(params, sourceNode, targetNode, linkType);
+
+    setPendingConnection(null);
+    setShowLinkTypeModal(false);
+  };
+
+  const handleLinkTypeCancel = () => {
+    setPendingConnection(null);
+    setShowLinkTypeModal(false);
   };
 
   return (
@@ -428,8 +477,28 @@ function App() {
           onCancel={handleSubtypeCancel}
         />
       )}
+
+      {showLinkTypeModal && pendingConnection && (
+        <LinkTypeModal
+          linkTypes={availableLinkTypes}
+          sourceNode={pendingConnection.sourceNode}
+          targetNode={pendingConnection.targetNode}
+          onSelect={handleLinkTypeSelect}
+          onCancel={handleLinkTypeCancel}
+        />
+      )}
+
+      {showNameModal && (
+        <ComponentNameModal
+          componentType={pendingComponentWithSubtype?.type || pendingComponent?.type}
+          subtype={pendingComponentWithSubtype?.subtype}
+          onConfirm={handleNameConfirm}
+          onCancel={handleNameCancel}
+        />
+      )}
     </div>
   );
 }
 
 export default App;
+
