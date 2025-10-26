@@ -4,14 +4,27 @@ import './EvaluationPanel.css';
 const EvaluationPanel = ({ evaluation, onClose }) => {
   if (!evaluation) return null;
 
-  const renderHeuristicScores = (scores) => {
+  const renderParameterScores = (scores) => {
     if (!scores || Object.keys(scores).length === 0) return null;
+
+    const parameterLabels = {
+      LATENCY: 'Latency',
+      COST: 'Cost',
+      AVAILABILITY: 'Availability',
+      CONSISTENCY: 'Consistency',
+      SECURITY: 'Security',
+      DURABILITY: 'Durability',
+      SCALABILITY: 'Scalability',
+      THROUGHPUT: 'Throughput',
+      MAINTAINABILITY: 'Maintainability',
+      ENERGY_EFFICIENCY: 'Energy Efficiency'
+    };
 
     return (
       <div className="scores-grid">
         {Object.entries(scores).map(([key, value]) => (
           <div key={key} className="score-card">
-            <div className="score-label">{key.replace('_', ' ')}</div>
+            <div className="score-label">{parameterLabels[key] || key.replace('_', ' ')}</div>
             <div className="score-bar">
               <div
                 className="score-fill"
@@ -28,32 +41,64 @@ const EvaluationPanel = ({ evaluation, onClose }) => {
     );
   };
 
-  const renderValidation = (validation) => {
-    if (!validation) return null;
+  const renderBottlenecks = (bottlenecks) => {
+    if (!bottlenecks || bottlenecks.length === 0) return null;
 
     return (
-      <div className="validation-section">
-        <h3>Validation Results</h3>
-        {validation.valid ? (
-          <div className="validation-success">
-            <span className="status-icon">✅</span>
-            <span>Architecture is valid!</span>
-          </div>
-        ) : (
-          <div className="validation-errors">
-            <div className="validation-header">
-              <span className="status-icon">⚠️</span>
-              <span>{validation.violations?.length || 0} violations found</span>
+      <div className="bottlenecks-section">
+        <h3>⚠️ Bottleneck Analysis</h3>
+        <div className="bottlenecks-list">
+          {bottlenecks.map((bottleneck, index) => (
+            <div key={index} className="bottleneck-card">
+              <div className="bottleneck-header">
+                <span className="bottleneck-name">{bottleneck.componentName}</span>
+                <span className="bottleneck-type">{bottleneck.componentType}</span>
+              </div>
+              <div className="bottleneck-details">
+                <div className="bottleneck-stat">
+                  <span className="stat-label">Total Connections:</span>
+                  <span className="stat-value">{bottleneck.totalConnections}</span>
+                </div>
+                <div className="bottleneck-stat">
+                  <span className="stat-label">Incoming:</span>
+                  <span className="stat-value">{bottleneck.incomingConnections}</span>
+                </div>
+                <div className="bottleneck-stat">
+                  <span className="stat-label">Outgoing:</span>
+                  <span className="stat-value">{bottleneck.outgoingConnections}</span>
+                </div>
+                <div className="bottleneck-stat">
+                  <span className="stat-label">Risk Score:</span>
+                  <span className={`stat-value ${bottleneck.bottleneckScore < 0.5 ? 'high-risk' : 'medium-risk'}`}>
+                    {(bottleneck.bottleneckScore * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
             </div>
-            {validation.violations && validation.violations.length > 0 && (
-              <ul className="violations-list">
-                {validation.violations.map((violation, index) => (
-                  <li key={index}>{violation}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderInsights = (insights) => {
+    if (!insights || insights.length === 0) return null;
+
+    return (
+      <div className="insights-section">
+        <h3>💡 Insights & Recommendations</h3>
+        <ul className="insights-list">
+          {insights.map((insight, index) => (
+            <li key={index} className={
+              insight.includes('✅') ? 'insight-success' :
+              insight.includes('⚠') || insight.includes('❌') ? 'insight-warning' :
+              insight.includes('💡') ? 'insight-info' :
+              'insight-neutral'
+            }>
+              {insight}
+            </li>
+          ))}
+        </ul>
       </div>
     );
   };
@@ -108,61 +153,62 @@ const EvaluationPanel = ({ evaluation, onClose }) => {
             </div>
           )}
 
-          {/* Component Scores */}
-          {evaluation.componentScores && Object.keys(evaluation.componentScores).length > 0 && (
-            <div className="section">
-              <h3>Component Scores</h3>
-              {renderHeuristicScores(evaluation.componentScores)}
-            </div>
-          )}
-
-          {/* Link Scores */}
-          {evaluation.linkScores && Object.keys(evaluation.linkScores).length > 0 && (
-            <div className="section">
-              <h3>Link Scores</h3>
-              {renderHeuristicScores(evaluation.linkScores)}
-            </div>
-          )}
-
           {/* Architecture Metrics */}
-          {evaluation.architectureMetrics && (
-            <div className="section">
-              <h3>Architecture Metrics</h3>
-              <div className="metrics-grid">
-                <div className="metric-card">
-                  <div className="metric-label">Total Components</div>
-                  <div className="metric-value">{evaluation.architectureMetrics.totalComponents || 0}</div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-label">Total Links</div>
-                  <div className="metric-value">{evaluation.architectureMetrics.totalLinks || 0}</div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-label">Avg Component Score</div>
-                  <div className="metric-value">
-                    {evaluation.architectureMetrics.avgComponentScore?.toFixed(2) || 'N/A'}
-                  </div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-label">Avg Link Score</div>
-                  <div className="metric-value">
-                    {evaluation.architectureMetrics.avgLinkScore?.toFixed(2) || 'N/A'}
-                  </div>
-                </div>
+          <div className="section">
+            <h3>Architecture Metrics</h3>
+            <div className="metrics-grid">
+              <div className="metric-card">
+                <div className="metric-label">Components</div>
+                <div className="metric-value">{evaluation.componentCount || 0}</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-label">Links</div>
+                <div className="metric-value">{evaluation.linkCount || 0}</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-label">Valid</div>
+                <div className="metric-value">{evaluation.valid ? '✅ Yes' : '❌ No'}</div>
               </div>
             </div>
+          </div>
+
+          {/* Parameter Scores */}
+          {evaluation.parameterScores && Object.keys(evaluation.parameterScores).length > 0 && (
+            <div className="section">
+              <h3>Parameter-Wise Scores</h3>
+              {renderParameterScores(evaluation.parameterScores)}
+            </div>
           )}
 
-          {/* Validation */}
-          {evaluation.validation && renderValidation(evaluation.validation)}
+          {/* Bottlenecks */}
+          {evaluation.bottlenecks && evaluation.bottlenecks.length > 0 &&
+            renderBottlenecks(evaluation.bottlenecks)
+          }
 
-          {/* Recommendations */}
-          {evaluation.recommendations && evaluation.recommendations.length > 0 && (
+          {/* Insights */}
+          {evaluation.insights && evaluation.insights.length > 0 &&
+            renderInsights(evaluation.insights)
+          }
+
+          {/* Validation Violations */}
+          {evaluation.violations && evaluation.violations.length > 0 && (
             <div className="section">
-              <h3>💡 Recommendations</h3>
-              <ul className="recommendations-list">
-                {evaluation.recommendations.map((rec, index) => (
-                  <li key={index}>{rec}</li>
+              <h3>⚠️ Validation Violations</h3>
+              <ul className="violations-list">
+                {evaluation.violations.map((violation, index) => (
+                  <li key={index} className="violation-item">{violation}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Warnings */}
+          {evaluation.warnings && evaluation.warnings.length > 0 && (
+            <div className="section">
+              <h3>⚡ Warnings</h3>
+              <ul className="warnings-list">
+                {evaluation.warnings.map((warning, index) => (
+                  <li key={index} className="warning-item">{warning}</li>
                 ))}
               </ul>
             </div>
@@ -180,4 +226,3 @@ const EvaluationPanel = ({ evaluation, onClose }) => {
 };
 
 export default EvaluationPanel;
-

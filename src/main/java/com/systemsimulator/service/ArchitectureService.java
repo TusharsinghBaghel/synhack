@@ -288,7 +288,7 @@ public class ArchitectureService {
             insights.add("⚠ Detected " + bottlenecks.size() + " potential bottleneck(s):");
             for (BottleneckInfo bottleneck : bottlenecks) {
                 insights.add("  • " + bottleneck.getComponentName() + " (" + bottleneck.getComponentType() +
-                           ") has " + bottleneck.getTotalConnections() + " connections. Consider load balancing or caching.");
+                        ") has " + bottleneck.getTotalConnections() + " connections. Consider load balancing or caching.");
             }
         }
 
@@ -340,9 +340,8 @@ public class ArchitectureService {
         double score1 = heuristicAggregator.aggregate(arch1.getComponents(), arch1.getLinks(), parameterWeights);
         double score2 = heuristicAggregator.aggregate(arch2.getComponents(), arch2.getLinks(), parameterWeights);
 
-        Map<Parameter, Double> params1 = heuristicAggregator.aggregateByParameter(arch1.getComponents());
-        Map<Parameter, Double> params2 = heuristicAggregator.aggregateByParameter(arch2.getComponents());
-
+        Map<Parameter, Double> params1 = heuristicAggregator.aggregateByParameter(arch1.getComponents(), arch1.getLinks());
+        Map<Parameter, Double> params2 = heuristicAggregator.aggregateByParameter(arch2.getComponents(), arch2.getLinks());
         return new ArchitectureComparison(
                 arch1.getId(), arch1.getName(), score1,
                 arch2.getId(), arch2.getName(), score2,
@@ -365,13 +364,13 @@ public class ArchitectureService {
         private final List<String> warnings;
 
         public ArchitectureEvaluation(String architectureId, String architectureName,
-                                     double overallScore, int componentCount, int linkCount,
-                                     Map<Parameter, Double> parameterScores,
-                                     List<BottleneckInfo> bottlenecks,
-                                     List<String> insights,
-                                     boolean valid,
-                                     List<String> violations,
-                                     List<String> warnings) {
+                                      double overallScore, int componentCount, int linkCount,
+                                      Map<Parameter, Double> parameterScores,
+                                      List<BottleneckInfo> bottlenecks,
+                                      List<String> insights,
+                                      boolean valid,
+                                      List<String> violations,
+                                      List<String> warnings) {
             this.architectureId = architectureId;
             this.architectureName = architectureName;
             this.overallScore = overallScore;
@@ -408,7 +407,7 @@ public class ArchitectureService {
         private final int outgoingConnections;
 
         public BottleneckInfo(String componentId, String componentName, ComponentType componentType,
-                            double bottleneckScore, int incomingConnections, int outgoingConnections) {
+                              double bottleneckScore, int incomingConnections, int outgoingConnections) {
             this.componentId = componentId;
             this.componentName = componentName;
             this.componentType = componentType;
@@ -437,9 +436,9 @@ public class ArchitectureService {
         private final Map<Parameter, Double> arch2Parameters;
 
         public ArchitectureComparison(String arch1Id, String arch1Name, double arch1Score,
-                                     String arch2Id, String arch2Name, double arch2Score,
-                                     Map<Parameter, Double> arch1Parameters,
-                                     Map<Parameter, Double> arch2Parameters) {
+                                      String arch2Id, String arch2Name, double arch2Score,
+                                      Map<Parameter, Double> arch1Parameters,
+                                      Map<Parameter, Double> arch2Parameters) {
             this.arch1Id = arch1Id;
             this.arch1Name = arch1Name;
             this.arch1Score = arch1Score;
@@ -462,7 +461,7 @@ public class ArchitectureService {
         public double getScoreDifference() { return arch1Score - arch2Score; }
         public String getWinner() {
             return arch1Score > arch2Score ? arch1Name :
-                   arch2Score > arch1Score ? arch2Name : "Tie";
+                    arch2Score > arch1Score ? arch2Name : "Tie";
         }
     }
 }
