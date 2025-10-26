@@ -19,7 +19,7 @@ public class ComponentService {
     private HeuristicService heuristicService;
 
     public Component createComponent(ComponentType type, String id, String name, Map<String, Object> properties) {
-        Component component = instantiateComponent(type, id, name);
+        Component component = instantiateComponent(type, id, name, properties);
         component.setProperties(properties);
 
         // Initialize default heuristics
@@ -49,23 +49,70 @@ public class ComponentService {
         return componentRepository.existsById(id);
     }
 
-    private Component instantiateComponent(ComponentType type, String id, String name) {
+    private Component instantiateComponent(ComponentType type, String id, String name, Map<String, Object> properties) {
         switch (type) {
             case DATABASE:
-                return new DatabaseComponent(id, name, DatabaseComponent.DatabaseType.SQL);
+                DatabaseComponent.DatabaseType dbType = DatabaseComponent.DatabaseType.SQL;
+                if (properties.containsKey("subtype")) {
+                    try {
+                        dbType = DatabaseComponent.DatabaseType.valueOf(properties.get("subtype").toString());
+                    } catch (IllegalArgumentException e) {
+                        // Use default
+                    }
+                }
+                return new DatabaseComponent(id, name, dbType);
             case CACHE:
-                return new CacheComponent(id, name, CacheComponent.CacheType.IN_MEMORY);
+                CacheComponent.CacheType cacheType = CacheComponent.CacheType.IN_MEMORY;
+                if (properties.containsKey("subtype")) {
+                    try {
+                        cacheType = CacheComponent.CacheType.valueOf(properties.get("subtype").toString());
+                    } catch (IllegalArgumentException e) {
+                        // Use default
+                    }
+                }
+                return new CacheComponent(id, name, cacheType);
             case API_SERVICE:
-                return new APIServiceComponent(id, name, APIServiceComponent.APIType.REST);
+                APIServiceComponent.APIType apiType = APIServiceComponent.APIType.REST;
+                if (properties.containsKey("subtype")) {
+                    try {
+                        apiType = APIServiceComponent.APIType.valueOf(properties.get("subtype").toString());
+                    } catch (IllegalArgumentException e) {
+                        // Use default
+                    }
+                }
+                return new APIServiceComponent(id, name, apiType);
             case QUEUE:
-                return new QueueComponent(id, name, QueueComponent.QueueType.MESSAGE_QUEUE);
+                QueueComponent.QueueType queueType = QueueComponent.QueueType.MESSAGE_QUEUE;
+                if (properties.containsKey("subtype")) {
+                    try {
+                        queueType = QueueComponent.QueueType.valueOf(properties.get("subtype").toString());
+                    } catch (IllegalArgumentException e) {
+                        // Use default
+                    }
+                }
+                return new QueueComponent(id, name, queueType);
             case STORAGE:
-                return new StorageComponent(id, name, StorageComponent.StorageType.OBJECT_STORAGE);
+                StorageComponent.StorageType storageType = StorageComponent.StorageType.OBJECT_STORAGE;
+                if (properties.containsKey("subtype")) {
+                    try {
+                        storageType = StorageComponent.StorageType.valueOf(properties.get("subtype").toString());
+                    } catch (IllegalArgumentException e) {
+                        // Use default
+                    }
+                }
+                return new StorageComponent(id, name, storageType);
             case LOAD_BALANCER:
-                return new LoadBalancerComponent(id, name, LoadBalancerComponent.LoadBalancerType.ROUND_ROBIN);
+                LoadBalancerComponent.LoadBalancerType lbType = LoadBalancerComponent.LoadBalancerType.ROUND_ROBIN;
+                if (properties.containsKey("subtype")) {
+                    try {
+                        lbType = LoadBalancerComponent.LoadBalancerType.valueOf(properties.get("subtype").toString());
+                    } catch (IllegalArgumentException e) {
+                        // Use default
+                    }
+                }
+                return new LoadBalancerComponent(id, name, lbType);
             default:
                 throw new IllegalArgumentException("Unsupported component type: " + type);
         }
     }
 }
-

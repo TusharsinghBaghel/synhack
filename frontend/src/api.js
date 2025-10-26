@@ -18,6 +18,7 @@ export const componentAPI = {
   delete: (id) => api.delete(`/components/${id}`),
   getTypes: () => api.get('/components/types'),
   getByType: (type) => api.get(`/components/type/${type}`),
+  getSubtypes: (type) => api.get(`/components/subtypes/${type}`),
 };
 
 // Link APIs
@@ -53,4 +54,3 @@ export const architectureAPI = {
 };
 
 export default api;
-

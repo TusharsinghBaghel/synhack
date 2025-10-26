@@ -54,9 +54,9 @@ public class ArchitectureController {
     @PostMapping("/{id}/components")
     public ResponseEntity<?> addComponentToArchitecture(
             @PathVariable String id,
-            @RequestBody Component component) {
+            @RequestBody ComponentReference componentRef) {
         try {
-            Architecture updated = architectureService.addComponentToArchitecture(id, component);
+            Architecture updated = architectureService.addComponentToArchitectureById(id, componentRef.getComponentId());
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -70,9 +70,9 @@ public class ArchitectureController {
     @PostMapping("/{id}/links")
     public ResponseEntity<?> addLinkToArchitecture(
             @PathVariable String id,
-            @RequestBody Link link) {
+            @RequestBody LinkReference linkRef) {
         try {
-            Architecture updated = architectureService.addLinkToArchitecture(id, link);
+            Architecture updated = architectureService.addLinkToArchitectureById(id, linkRef.getLinkId());
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -255,5 +255,19 @@ public class ArchitectureController {
         }
 
         public String getError() { return error; }
+    }
+
+    public static class ComponentReference {
+        private String componentId;
+
+        public String getComponentId() { return componentId; }
+        public void setComponentId(String componentId) { this.componentId = componentId; }
+    }
+
+    public static class LinkReference {
+        private String linkId;
+
+        public String getLinkId() { return linkId; }
+        public void setLinkId(String linkId) { this.linkId = linkId; }
     }
 }
