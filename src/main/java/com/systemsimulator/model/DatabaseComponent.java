@@ -14,13 +14,15 @@ public class DatabaseComponent extends Component {
 
     public DatabaseComponent() {
         super();
-        setType(ComponentType.DATABASE);
     }
 
     public DatabaseComponent(String id, String name, DatabaseType databaseType) {
-        super(id, name, ComponentType.DATABASE);
+        super(id, name);
         this.databaseType = databaseType;
     }
 
+    @Override
+    public ComponentType getType() {
+        return ComponentType.DATABASE;
+    }
 }
-

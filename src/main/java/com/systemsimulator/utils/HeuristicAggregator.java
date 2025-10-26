@@ -9,7 +9,7 @@ import java.util.Map;
 
 @Component
 public class HeuristicAggregator {
-
+    //TODO: heuristics must be aggregated parameter wise not overall.. also the aggregation logic must be different for each parameter.. for example latency can be added to aggregate
     /**
      * Aggregates heuristics from all components and links with weighted scoring
      */

@@ -9,11 +9,14 @@ public class ExternalServiceComponent extends Component {
 
     public ExternalServiceComponent() {
         super();
-        setType(ComponentType.EXTERNAL_SERVICE);
     }
 
     public ExternalServiceComponent(String id, String name) {
-        super(id, name, ComponentType.EXTERNAL_SERVICE);
+        super(id, name);
+    }
+
+    @Override
+    public ComponentType getType() {
+        return ComponentType.EXTERNAL_SERVICE;
     }
 }
-

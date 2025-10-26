@@ -9,11 +9,14 @@ public class StreamProcessorComponent extends Component {
 
     public StreamProcessorComponent() {
         super();
-        setType(ComponentType.STREAM_PROCESSOR);
     }
 
     public StreamProcessorComponent(String id, String name) {
-        super(id, name, ComponentType.STREAM_PROCESSOR);
+        super(id, name);
+    }
+
+    @Override
+    public ComponentType getType() {
+        return ComponentType.STREAM_PROCESSOR;
     }
 }
-

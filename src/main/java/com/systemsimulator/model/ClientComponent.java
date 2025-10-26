@@ -9,11 +9,14 @@ public class ClientComponent extends Component {
 
     public ClientComponent() {
         super();
-        setType(ComponentType.CLIENT);
     }
 
     public ClientComponent(String id, String name) {
-        super(id, name, ComponentType.CLIENT);
+        super(id, name);
+    }
+
+    @Override
+    public ComponentType getType() {
+        return ComponentType.CLIENT;
     }
 }
-

@@ -9,11 +9,14 @@ public class BatchProcessorComponent extends Component {
 
     public BatchProcessorComponent() {
         super();
-        setType(ComponentType.BATCH_PROCESSOR);
     }
 
     public BatchProcessorComponent(String id, String name) {
-        super(id, name, ComponentType.BATCH_PROCESSOR);
+        super(id, name);
+    }
+
+    @Override
+    public ComponentType getType() {
+        return ComponentType.BATCH_PROCESSOR;
     }
 }
-

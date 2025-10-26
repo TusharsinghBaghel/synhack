@@ -14,13 +14,15 @@ public class APIServiceComponent extends Component {
 
     public APIServiceComponent() {
         super();
-        setType(ComponentType.API_SERVICE);
     }
 
     public APIServiceComponent(String id, String name, APIType apiType) {
-        super(id, name, ComponentType.API_SERVICE);
+        super(id, name);
         this.apiType = apiType;
     }
 
+    @Override
+    public ComponentType getType() {
+        return ComponentType.API_SERVICE;
+    }
 }
-

@@ -11,16 +11,16 @@ import java.util.Map;
 public abstract class Component {
     private String id;
     private String name;
-    private ComponentType type;
     private HeuristicProfile heuristics = new HeuristicProfile();
     private Map<String, Object> properties = new HashMap<>();
 
     public Component() {}
 
-    public Component(String id, String name, ComponentType type) {
+    public Component(String id, String name) {
         this.id = id;
         this.name = name;
-        this.type = type;
     }
 
+    // Each concrete class must define its component type
+    public abstract ComponentType getType();
 }

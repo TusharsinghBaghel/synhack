@@ -22,8 +22,8 @@ public class ComponentService {
         Component component = instantiateComponent(type, id, name, properties);
         component.setProperties(properties);
 
-        // Initialize default heuristics
-        HeuristicProfile heuristics = heuristicService.getDefaultHeuristicsForType(type);
+        // Initialize heuristics based on component type and subtype
+        HeuristicProfile heuristics = heuristicService.getHeuristicsForComponent(component);
         component.setHeuristics(heuristics);
 
         return componentRepository.save(component);
