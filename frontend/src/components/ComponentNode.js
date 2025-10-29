@@ -1,69 +1,72 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
+import {
+  FaDatabase,
+  FaMemory,
+  FaNetworkWired,
+  FaStream,
+  FaHdd,
+  FaBalanceScale,
+  FaBolt,
+  FaLayerGroup,
+  FaGlobe,
+  FaLaptop,
+} from 'react-icons/fa';
 import './ComponentNode.css';
 
-const COMPONENT_ICONS = {
-  DATABASE: '💾',
-  CACHE: '⚡',
-  API_SERVICE: '🔌',
-  QUEUE: '📬',
-  STORAGE: '📦',
-  LOAD_BALANCER: '⚖️',
-  STREAM_PROCESSOR: '🌊',
-  BATCH_PROCESSOR: '⏱️',
-  EXTERNAL_SERVICE: '🌐',
-  CLIENT: '👤',
+const ICON_MAP = {
+  DATABASE: FaDatabase,
+  CACHE: FaMemory,
+  API_SERVICE: FaNetworkWired,
+  QUEUE: FaStream,
+  STORAGE: FaHdd,
+  LOAD_BALANCER: FaBalanceScale,
+  STREAM_PROCESSOR: FaBolt,
+  BATCH_PROCESSOR: FaLayerGroup,
+  EXTERNAL_SERVICE: FaGlobe,
+  CLIENT: FaLaptop,
 };
 
-const COMPONENT_COLORS = {
-  DATABASE: '#10b981',
-  CACHE: '#f59e0b',
-  API_SERVICE: '#3b82f6',
-  QUEUE: '#8b5cf6',
-  STORAGE: '#ec4899',
-  LOAD_BALANCER: '#06b6d4',
-  STREAM_PROCESSOR: '#6366f1',
-  BATCH_PROCESSOR: '#84cc16',
-  EXTERNAL_SERVICE: '#64748b',
-  CLIENT: '#0ea5e9',
-};
-
-const ComponentNode = ({ data, isConnectable }) => {
-  const icon = COMPONENT_ICONS[data.componentType] || '📦';
-  const color = COMPONENT_COLORS[data.componentType] || '#6b7280';
-
-  // Format the display label with subtype if available
-  const getDisplayLabel = () => {
-    if (data.subtype) {
-      return (
-        <>
-          <div className="node-subtype">{data.subtype.replace(/_/g, ' ')}</div>
-          <div className="node-custom-name">{data.customName || data.label}</div>
-        </>
-      );
-    }
-    return <div className="node-custom-name">{data.customName || data.label}</div>;
-  };
+const ComponentNode = ({ id, data }) => {
+  const isPreview = String(id || '').startsWith('preview-');
+  const type = (data?.componentType || '').toUpperCase();
+  const SubIcon = ICON_MAP[type] || FaGlobe;
+  const subtypeLabel = data?.subtype || data?.properties?.subtype || data?.label || '';
 
   return (
-    <div className="component-node" style={{ borderColor: color }}>
+    <div
+      className={`component-node-icon ${isPreview ? 'preview' : 'real'}`}
+      title={data?.label || subtypeLabel}
+      data-node-id={id}
+    >
+      {/* top target handle (visible & connectable) */}
       <Handle
         type="target"
         position={Position.Top}
-        isConnectable={isConnectable}
-        className="node-handle"
+        id="top"
+        isConnectable={true}
+        className="node-handle node-handle-top"
+        style={{ background: 'transparent' }}
+        aria-label="top-connection"
       />
-      <div className="node-content">
-        <div className="node-icon" style={{ backgroundColor: color }}>
-          {icon}
-        </div>
-        <div className="node-label">{getDisplayLabel()}</div>
+
+      <div className="sketchy-icon-wrap">
+        <SubIcon className={`node-icon`} />
       </div>
+
+      <div className="subtype-text">
+        {String(subtypeLabel).replace(/_/g, ' ').toUpperCase()}
+      </div>
+
+      {/* bottom source handle (visible & connectable) */}
       <Handle
         type="source"
         position={Position.Bottom}
-        isConnectable={isConnectable}
-        className="node-handle"
+        id="bottom"
+        isConnectable={true}
+        className="node-handle node-handle-bottom"
+        style={{ background: 'transparent' }}
+        aria-label="bottom-connection"
       />
     </div>
   );

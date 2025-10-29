@@ -40,6 +40,11 @@ function App() {
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [selectedEdge, setSelectedEdge] = useState(null);
+
+  // NEW: preview state exposed by palette (clicking/pinning a subtype
+  const [previewedSubtype, setPreviewedSubtype] = useState(null);
+  // previewedSubtype shape: { componentType: 'DATABASE', subtype: { id, label, heuristics, ... } }
+
   const [architectureId, setArchitectureId] = useState(null);
   const [architectureName, setArchitectureName] = useState('My Architecture');
   const [linkTypes, setLinkTypes] = useState([]);
@@ -61,6 +66,22 @@ function App() {
     loadLinkTypes();
     createNewArchitecture();
   }, []);
+
+  // Handler passed to ComponentPalette so it can notify App about a preview/selection
+  const handlePreviewSubtype = useCallback((componentType, subtype) => {
+    if (!componentType || !subtype) {
+      setPreviewedSubtype(null);
+      return;
+    }
+    setPreviewedSubtype({ componentType, subtype });
+  }, []);
+
+  // If user selects a real node/edge on canvas, clear palette preview to avoid ambiguity
+  useEffect(() => {
+    if (selectedNode || selectedEdge) {
+      setPreviewedSubtype(null);
+    }
+  }, [selectedNode, selectedEdge]);
 
   const loadLinkTypes = async () => {
     try {
@@ -90,10 +111,30 @@ function App() {
 
   const onConnect = useCallback(
     async (params) => {
+      // create optimistic temporary edge so user sees an immediate connection
+      const tempId = `edge-temp-${Date.now()}`;
+      const optimisticEdge = {
+        id: tempId,
+        source: params.source,
+        target: params.target,
+        sourceHandle: params.sourceHandle,
+        targetHandle: params.targetHandle,
+        type: 'smoothstep',
+        animated: true,
+        label: 'Connecting...',
+        data: { temp: true },
+      };
+
+      setEdges((eds) => addEdge(optimisticEdge, eds));
+
       const sourceNode = nodes.find((n) => n.id === params.source);
       const targetNode = nodes.find((n) => n.id === params.target);
 
-      if (!sourceNode || !targetNode) return;
+      if (!sourceNode || !targetNode) {
+        // invalid - remove temp
+        setEdges((eds) => eds.filter((e) => e.id !== tempId));
+        return;
+      }
 
       try {
         const response = await linkAPI.suggest({
@@ -101,35 +142,41 @@ function App() {
           targetId: targetNode.data.componentId,
         });
 
-        const suggestions = response.data.validLinkTypes || linkTypes;
+        const suggestions = response?.data?.validLinkTypes || linkTypes || [];
 
         if (suggestions.length === 0) {
           showNotification('No valid link types for this connection', 'error');
+          setEdges((eds) => eds.filter((e) => e.id !== tempId));
           return;
         }
 
         if (suggestions.length > 1) {
+          // ask user; keep temp edge until user chooses or cancels
           setPendingConnection({
-            params: params,
-            sourceNode: sourceNode,
-            targetNode: targetNode,
+            params,
+            sourceNode,
+            targetNode,
+            tempEdgeId: tempId,
           });
           setAvailableLinkTypes(suggestions);
           setShowLinkTypeModal(true);
           return;
         }
 
+        // single suggestion -> create connection and replace temp
         const linkType = suggestions[0];
-        await createConnection(params, sourceNode, targetNode, linkType);
+        await createConnection(params, sourceNode, targetNode, linkType, tempId);
       } catch (error) {
         showNotification('Failed to get link type suggestions', 'error');
         console.error('Failed to get link type suggestions:', error);
+        setEdges((eds) => eds.filter((e) => e.id !== tempId));
       }
     },
-    [nodes, edges, architectureId, linkTypes]
+    [nodes, edges, architectureId, linkTypes, setEdges]
   );
 
-  const createConnection = async (params, sourceNode, targetNode, linkType) => {
+  // createConnection now accepts optional tempEdgeId to replace the optimistic edge
+  const createConnection = async (params, sourceNode, targetNode, linkType, tempEdgeId = null) => {
     try {
       const validationResponse = await linkAPI.validate({
         sourceId: sourceNode.data.componentId,
@@ -139,6 +186,7 @@ function App() {
 
       if (!validationResponse.data.valid) {
         showNotification(validationResponse.data.message || 'Invalid connection', 'error');
+        if (tempEdgeId) setEdges((eds) => eds.filter((e) => e.id !== tempEdgeId));
         return;
       }
 
@@ -148,12 +196,12 @@ function App() {
         linkType: linkType,
       });
 
-      const newEdge = {
+      const finalEdge = {
         ...params,
         id: linkResponse.data.id,
         type: 'smoothstep',
         animated: true,
-        label: linkType.replace(/_/g, ' '),
+        label: (linkType || '').replace(/_/g, ' '),
         data: {
           linkId: linkResponse.data.id,
           linkType: linkType,
@@ -161,7 +209,10 @@ function App() {
         },
       };
 
-      setEdges((eds) => addEdge(newEdge, eds));
+      setEdges((eds) => {
+        const withoutTemp = tempEdgeId ? eds.filter((e) => e.id !== tempEdgeId) : eds;
+        return addEdge(finalEdge, withoutTemp);
+      });
 
       if (architectureId) {
         await architectureAPI.addLink(architectureId, { linkId: linkResponse.data.id });
@@ -171,6 +222,7 @@ function App() {
     } catch (error) {
       showNotification(error.response?.data?.error || 'Failed to create connection', 'error');
       console.error('Failed to create connection:', error);
+      if (tempEdgeId) setEdges((eds) => eds.filter((e) => e.id !== tempEdgeId));
     }
   };
 
@@ -229,22 +281,46 @@ function App() {
     async (event) => {
       event.preventDefault();
 
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const type = event.dataTransfer.getData('application/reactflow');
-
-      if (typeof type === 'undefined' || !type) {
+      if (!reactFlowWrapper.current || !reactFlowInstance) {
         return;
       }
+
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+
+      // support payload that may be JSON (from palette) or plain text
+      let payload = event.dataTransfer.getData('application/reactflow') || event.dataTransfer.getData('text/plain') || '';
+      let type = payload;
+      let subtype = null;
+
+      // try to parse JSON payload { type, subtype }
+      try {
+        const parsed = JSON.parse(payload);
+        if (parsed && typeof parsed === 'object') {
+          type = parsed.type || type;
+          subtype = parsed.subtype || null;
+        }
+      } catch (err) {
+        // not JSON - payload remains as plain type
+      }
+
+      if (!type) return;
 
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
 
-      setPendingComponent({ type, position });
+      // store pending component (may already include subtype)
+      setPendingComponent({ type, position, subtype });
 
       if (COMPONENTS_WITH_SUBTYPES.includes(type)) {
-        setShowSubtypeModal(true);
+        // if subtype already provided by palette selection, skip modal and go to name modal
+        if (subtype) {
+          setPendingComponentWithSubtype({ type, position, subtype });
+          setShowNameModal(true);
+        } else {
+          setShowSubtypeModal(true);
+        }
       } else {
         setShowNameModal(true);
       }
@@ -344,6 +420,8 @@ function App() {
   };
 
   const handleSubtypeSelect = async (subtype) => {
+    // If a pendingComponent already exists, we use it.
+    // Otherwise ignore.
     if (!pendingComponent) return;
 
     const { type, position } = pendingComponent;
@@ -358,13 +436,14 @@ function App() {
   };
 
   const handleNameConfirm = async (customName) => {
+    // Priority: pendingComponentWithSubtype (explicit), else pendingComponent (may already include subtype)
     if (pendingComponentWithSubtype) {
       const { type, position, subtype } = pendingComponentWithSubtype;
       await createComponentOnCanvas(type, position, subtype, customName);
       setPendingComponentWithSubtype(null);
     } else if (pendingComponent) {
-      const { type, position } = pendingComponent;
-      await createComponentOnCanvas(type, position, null, customName);
+      const { type, position, subtype } = pendingComponent;
+      await createComponentOnCanvas(type, position, subtype || null, customName);
       setPendingComponent(null);
     }
     setShowNameModal(false);
@@ -379,17 +458,36 @@ function App() {
   const handleLinkTypeSelect = async (linkType) => {
     if (!pendingConnection) return;
 
-    const { params, sourceNode, targetNode } = pendingConnection;
-    await createConnection(params, sourceNode, targetNode, linkType);
+    const { params, sourceNode, targetNode, tempEdgeId } = pendingConnection;
+    await createConnection(params, sourceNode, targetNode, linkType, tempEdgeId);
 
     setPendingConnection(null);
     setShowLinkTypeModal(false);
   };
 
   const handleLinkTypeCancel = () => {
+    // remove any optimistic edge if present
+    if (pendingConnection?.tempEdgeId) {
+      setEdges((eds) => eds.filter((e) => e.id !== pendingConnection.tempEdgeId));
+    }
     setPendingConnection(null);
     setShowLinkTypeModal(false);
   };
+
+  // IMPORTANT: when rendering Sidebar we will supply either the real selectedNode OR a synthetic preview node
+  const sidebarNode = selectedNode
+    ? selectedNode
+    : (!selectedEdge && previewedSubtype
+        ? {
+            id: `preview-${previewedSubtype.componentType}-${previewedSubtype.subtype.id || previewedSubtype.subtype.name}`,
+            data: {
+              label: previewedSubtype.subtype.label || previewedSubtype.subtype.name,
+              heuristics: previewedSubtype.subtype.heuristics || '',
+              componentType: previewedSubtype.componentType,
+              properties: { subtype: previewedSubtype.subtype.id || previewedSubtype.subtype.name },
+            },
+          }
+        : null);
 
   return (
     <div className="app">
@@ -422,7 +520,8 @@ function App() {
       </div>
 
       <div className="app-content">
-        <ComponentPalette />
+        {/* pass preview handler to palette */}
+        <ComponentPalette onPreviewSubtype={handlePreviewSubtype} />
 
         <div className="canvas-container" ref={reactFlowWrapper}>
           <ReactFlowProvider>
@@ -435,10 +534,15 @@ function App() {
               onInit={setReactFlowInstance}
               onDrop={onDrop}
               onDragOver={onDragOver}
-              onNodeClick={onNodeClick}
-              onEdgeClick={onEdgeClick}
+              onNodeClick={(e, node) => { setSelectedNode(node); setSelectedEdge(null); }}
+              onEdgeClick={(e, edge) => { setSelectedEdge(edge); setSelectedNode(null); }}
               nodeTypes={nodeTypes}
               fitView
+              nodesConnectable={true}
+              nodesDraggable={true}
+              connectionMode="loose"
+              connectionLineType="smoothstep"
+              defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
             >
               <Background />
               <Controls />
@@ -456,10 +560,12 @@ function App() {
         </div>
 
         <Sidebar
-          selectedNode={selectedNode}
+          // supply the synthetic preview node when there is no real selection
+          selectedNode={sidebarNode}
           selectedEdge={selectedEdge}
           onDeleteNode={onDeleteNode}
           onDeleteEdge={onDeleteEdge}
+          previewedSubtype={previewedSubtype} // <-- pass preview data so Sidebar can show heuristics
         />
       </div>
 
@@ -491,7 +597,7 @@ function App() {
       {showNameModal && (
         <ComponentNameModal
           componentType={pendingComponentWithSubtype?.type || pendingComponent?.type}
-          subtype={pendingComponentWithSubtype?.subtype}
+          subtype={pendingComponentWithSubtype?.subtype || pendingComponent?.subtype}
           onConfirm={handleNameConfirm}
           onCancel={handleNameCancel}
         />
@@ -501,4 +607,3 @@ function App() {
 }
 
 export default App;
-
