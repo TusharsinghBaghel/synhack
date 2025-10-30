@@ -167,10 +167,10 @@ const ComponentPalette = ({ onPreviewSubtype }) => {
           return (
             <div
               key={type}
-              className="palette-item"
+              className={`palette-item ${isOpen ? 'open' : ''}`}
               draggable
               onDragStart={(e) => onDragStart(e, type)}
-              style={{ borderLeftColor: color }}
+              style={{ borderLeftColor: color, zIndex: isOpen ? 50 : 1 }}
               onMouseEnter={() => handleHover(type)}
               onMouseLeave={() => handleLeave(type)}
               onClick={() => togglePin(type)}
