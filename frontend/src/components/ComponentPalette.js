@@ -46,11 +46,11 @@ const ComponentPalette = ({ onPreviewSubtype }) => {
     (list || []).map((item) => {
       if (!item) return null;
       if (typeof item === 'string') {
-        return { id: item, name: item, label: formatSubtypeName(item), heuristics: '' };
+        return { id: item, name: item, label: formatSubtypeName(item), heuristics: null };
       }
       const id = item.name || item.id || item.type || JSON.stringify(item);
       const name = item.name || item.id || item.type || id;
-      const heuristics = item.heuristics || item.description || item.note || '';
+      const heuristics = item.heuristics || item.description || item.note || null;
       return { id, name, label: formatSubtypeName(name), heuristics };
     }).filter(Boolean);
 
@@ -63,11 +63,23 @@ const ComponentPalette = ({ onPreviewSubtype }) => {
         try {
           const resp = await componentAPI.getSubtypes(t);
           const normalized = normalizeSubtypes(resp?.data?.subtypes || []);
-          const final = normalized.length ? normalized : [{ id: 'DEFAULT', name: 'DEFAULT', label: 'Default', heuristics: '' }];
+          // fetch heuristics for each subtype where possible
+          const withHeuristics = await Promise.all(
+            (normalized.length ? normalized : [{ id: 'DEFAULT', name: 'DEFAULT', label: 'Default', heuristics: null }]).map(async (st) => {
+              try {
+                const hResp = await componentAPI.getHeuristicsForSubtype(t, st.id);
+                return { ...st, heuristics: hResp.data };
+              } catch (e) {
+                return st;
+              }
+            })
+          );
+
+          const final = withHeuristics.length ? withHeuristics : [{ id: 'DEFAULT', name: 'DEFAULT', label: 'Default', heuristics: null }];
           setSubtypesByType((s) => ({ ...s, [t]: final }));
           setSelectedByType((s) => ({ ...s, [t]: final[0].id }));
         } catch (err) {
-          const fallback = [{ id: 'DEFAULT', name: 'DEFAULT', label: 'Default', heuristics: '' }];
+          const fallback = [{ id: 'DEFAULT', name: 'DEFAULT', label: 'Default', heuristics: null }];
           setSubtypesByType((s) => ({ ...s, [t]: fallback }));
           setSelectedByType((s) => ({ ...s, [t]: 'DEFAULT' }));
         } finally {
@@ -84,12 +96,25 @@ const ComponentPalette = ({ onPreviewSubtype }) => {
     try {
       const resp = await componentAPI.getSubtypes(type);
       const normalized = normalizeSubtypes(resp?.data?.subtypes || resp?.data || []);
-      const final = normalized.length ? normalized : [{ id: 'DEFAULT', name: 'DEFAULT', label: 'Default', heuristics: '' }];
+
+      // fetch heuristics for each subtype
+      const withHeuristics = await Promise.all(
+        (normalized.length ? normalized : [{ id: 'DEFAULT', name: 'DEFAULT', label: 'Default', heuristics: null }]).map(async (st) => {
+          try {
+            const hResp = await componentAPI.getHeuristicsForSubtype(type, st.id);
+            return { ...st, heuristics: hResp.data };
+          } catch (e) {
+            return st;
+          }
+        })
+      );
+
+      const final = withHeuristics.length ? withHeuristics : [{ id: 'DEFAULT', name: 'DEFAULT', label: 'Default', heuristics: null }];
       setSubtypesByType((s) => ({ ...s, [type]: final }));
       setSelectedByType((s) => ({ ...s, [type]: (s[type] ?? final[0].id) }));
       return final;
     } catch (err) {
-      const fallback = [{ id: 'DEFAULT', name: 'DEFAULT', label: 'Default', heuristics: '' }];
+      const fallback = [{ id: 'DEFAULT', name: 'DEFAULT', label: 'Default', heuristics: null }];
       setSubtypesByType((s) => ({ ...s, [type]: fallback }));
       setSelectedByType((s) => ({ ...s, [type]: 'DEFAULT' }));
       return fallback;
@@ -190,7 +215,7 @@ const ComponentPalette = ({ onPreviewSubtype }) => {
 
                 {isOpen && (
                   <div
-                    className="subtype-panel"
+                    className="subtype-panel below"
                     onMouseDown={(e) => e.stopPropagation()}
                     ref={panelRef}
                   >

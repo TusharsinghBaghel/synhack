@@ -19,6 +19,7 @@ export const componentAPI = {
   getTypes: () => api.get('/components/types'),
   getByType: (type) => api.get(`/components/type/${type}`),
   getSubtypes: (type) => api.get(`/components/subtypes/${type}`),
+  getHeuristicsForSubtype: (type, subtype) => api.get(`/components/heuristics/${type}/${subtype}`),
 };
 
 // Link APIs

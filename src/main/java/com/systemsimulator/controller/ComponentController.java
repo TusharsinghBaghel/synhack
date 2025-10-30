@@ -2,6 +2,7 @@ package com.systemsimulator.controller;
 
 import com.systemsimulator.model.*;
 import com.systemsimulator.service.ComponentService;
+import com.systemsimulator.service.HeuristicService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,12 +24,24 @@ public class ComponentController {
     @Autowired
     private ComponentService componentService;
 
+    @Autowired
+    private HeuristicService heuristicService;
+
     /**
      * Get all components
      */
     @GetMapping
     public ResponseEntity<List<Component>> getAllComponents() {
         return ResponseEntity.ok(componentService.getAllComponents());
+    }
+
+    /**
+     * Get heuristics for a specific type+subtype (used by frontend preview)
+     */
+    @GetMapping("/heuristics/{type}/{subtype}")
+    public ResponseEntity<HeuristicProfile> getHeuristicsForTypeAndSubtype(@PathVariable ComponentType type, @PathVariable String subtype) {
+        HeuristicProfile heuristics = heuristicService.getHeuristicsForTypeAndSubtype(type, subtype);
+        return ResponseEntity.ok(heuristics);
     }
 
     /**

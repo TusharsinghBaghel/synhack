@@ -69,12 +69,17 @@ function App() {
 
   // Handler passed to ComponentPalette so it can notify App about a preview/selection
   const handlePreviewSubtype = useCallback((componentType, subtype) => {
+    // When the palette previews a subtype, clear any real canvas selection
+    // so the Sidebar will show the previewed heuristics immediately.
     if (!componentType || !subtype) {
       setPreviewedSubtype(null);
       return;
     }
+    // clear canvas selection to avoid selectedNode overriding preview
+    setSelectedNode(null);
+    setSelectedEdge(null);
     setPreviewedSubtype({ componentType, subtype });
-  }, []);
+  }, [setSelectedNode, setSelectedEdge]);
 
   // If user selects a real node/edge on canvas, clear palette preview to avoid ambiguity
   useEffect(() => {
@@ -265,6 +270,8 @@ function App() {
 
         const subtypeLabel = subtype ? ` (${subtype.replace(/_/g, ' ')})` : '';
         showNotification(`Component added successfully${subtypeLabel}`, 'success');
+        // return the created node so callers can select it if needed
+        return newNode;
       } catch (error) {
         const errorMessage = error.response?.data?.error
           || error.response?.data?.message
@@ -272,6 +279,7 @@ function App() {
           || 'Failed to add component';
         showNotification(errorMessage, 'error');
         console.error('Failed to create component:', error);
+        throw error;
       }
     },
     [architectureId, setNodes, showNotification]
@@ -474,21 +482,6 @@ function App() {
     setShowLinkTypeModal(false);
   };
 
-  // IMPORTANT: when rendering Sidebar we will supply either the real selectedNode OR a synthetic preview node
-  const sidebarNode = selectedNode
-    ? selectedNode
-    : (!selectedEdge && previewedSubtype
-        ? {
-            id: `preview-${previewedSubtype.componentType}-${previewedSubtype.subtype.id || previewedSubtype.subtype.name}`,
-            data: {
-              label: previewedSubtype.subtype.label || previewedSubtype.subtype.name,
-              heuristics: previewedSubtype.subtype.heuristics || '',
-              componentType: previewedSubtype.componentType,
-              properties: { subtype: previewedSubtype.subtype.id || previewedSubtype.subtype.name },
-            },
-          }
-        : null);
-
   return (
     <div className="app">
       {notification && (
@@ -526,24 +519,24 @@ function App() {
         <div className="canvas-container" ref={reactFlowWrapper}>
           <ReactFlowProvider>
             <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onInit={setReactFlowInstance}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              onNodeClick={(e, node) => { setSelectedNode(node); setSelectedEdge(null); }}
-              onEdgeClick={(e, edge) => { setSelectedEdge(edge); setSelectedNode(null); }}
-              nodeTypes={nodeTypes}
-              fitView
-              nodesConnectable={true}
-              nodesDraggable={true}
-              connectionMode="loose"
-              connectionLineType="smoothstep"
-              defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
-            >
+               nodes={nodes}
+               edges={edges}
+               onNodesChange={onNodesChange}
+               onEdgesChange={onEdgesChange}
+               onConnect={onConnect}
+               onInit={setReactFlowInstance}
+               onDrop={onDrop}
+               onDragOver={onDragOver}
+               onNodeClick={onNodeClick}
+               onEdgeClick={onEdgeClick}
+               nodeTypes={nodeTypes}
+               fitView
+               nodesConnectable={true}
+               nodesDraggable={true}
+               connectionMode="loose"
+               connectionLineType="smoothstep"
+               defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
+             >
               <Background />
               <Controls />
               <MiniMap />
@@ -560,13 +553,13 @@ function App() {
         </div>
 
         <Sidebar
-          // supply the synthetic preview node when there is no real selection
-          selectedNode={sidebarNode}
+          // pass the real selectedNode state and preview separately; Sidebar will render preview if no real selection
+          selectedNode={selectedNode}
           selectedEdge={selectedEdge}
           onDeleteNode={onDeleteNode}
           onDeleteEdge={onDeleteEdge}
-          previewedSubtype={previewedSubtype} // <-- pass preview data so Sidebar can show heuristics
-        />
+          previewedSubtype={previewedSubtype} // pass preview data so Sidebar can show heuristics
+         />
       </div>
 
       {showEvaluation && (
